@@ -1,0 +1,44 @@
+{
+    "widgets": [
+        {
+            "type": "log",
+            "x": 6,
+            "y": 0,
+            "width": 15,
+            "height": 9,
+            "properties": {
+                "query": "SOURCE '/aws/cloudhsm/cluster-5x7cfd2hgt3' | fields @timestamp, @message\n| sort @timestamp desc\n| parse @message /Time: (?<time>[\\d\\/\\:\\s\\.]+)\\,\\s+usecs:(?<usecs>[\\d]+)\\s+[^:]+.{2}(?<sequence>[a-z\\d]+)[^:]+.{2}(?<reboot_count>.[a-z\\d]+)[^:]+.{2}(?<command_type>\\w+)[^0]+(?<command_type_hex>[a-z\\d]+)[^:]+.{2}(?<opcode>\\w+)[^0]+(?<opcode_hex>[a-z\\d]+)[^:]+.{2}(?<session_handle>[a-z\\d]+)[^:]+.{2}(?<hsm_id>\\d+):HSM \\w+: (?<response>[\\w\\s]+)[^:]+.{2}(?<log_type>\\w+)[^\\d]+(?<log_type_code>[\\d]+)/\n| limit 20\n| filter command_type_hex != \"0xeee2\"\n| display @timestamp,sequence,command_type,opcode,session_handle,hsm_id,response,log_type",
+                "region": "us-east-1",
+                "stacked": false,
+                "title": "Log group: /aws/cloudhsm/cluster-5x7cfd2hgt3",
+                "view": "table"
+            }
+        },
+        {
+            "type": "log",
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 9,
+            "properties": {
+                "query": "SOURCE '/aws/cloudhsm/cluster-5x7cfd2hgt3' | fields opcode\n| stats count(*) by opcode\n| filter command_type != \"TIME_INFO_CMD\"\n| parse @message /Time: (?<time>[\\d\\/\\:\\s\\.]+)\\,\\s+usecs:(?<usecs>[\\d]+)\\s+[^:]+.{2}(?<sequence>[a-z\\d]+)[^:]+.{2}(?<reboot_count>.[a-z\\d]+)[^:]+.{2}(?<command_type>\\w+)[^0]+(?<command_type_hex>[a-z\\d]+)[^:]+.{2}(?<opcode>\\w+)[^0]+(?<opcode_hex>[a-z\\d]+)[^:]+.{2}(?<session_handle>[a-z\\d]+)[^:]+.{2}(?<hsm_id>\\d):HSM Return: (?<response>\\w+)[^:]+.{2}(?<log_type>\\w+)[^\\d]+(?<log_type_code>[\\d]+)/",
+                "region": "us-east-1",
+                "title": "Log group: /aws/cloudhsm/cluster-5x7cfd2hgt3",
+                "view": "pie"
+            }
+        },
+        {
+            "type": "log",
+            "x": 0,
+            "y": 9,
+            "width": 21,
+            "height": 6,
+            "properties": {
+                "query": "SOURCE '/aws/cloudhsm/cluster-5x7cfd2hgt3' | fields @timestamp, @message\n| sort @timestamp desc\n| filter opcode like \"CN_LOG\"\n| parse @message /Time: (?<time>[\\d\\/\\:\\s\\.]+)\\,\\s+usecs:(?<usecs>[\\d]+)\\s+[^:]+.{2}(?<sequence>[a-z\\d]+)[^:]+.{2}(?<reboot_count>.[a-z\\d]+)[^:]+.{2}(?<command_type>\\w+)[^0]+(?<command_type_hex>[a-z\\d]+)[^:]+.{2}(?<opcode>\\w+)[^0]+(?<opcode_hex>[a-z\\d]+)[^:]+.{2}(?<session_handle>[a-z\\d]+)[^:]+.{2}(?<hsm_id>\\d):HSM Return: (?<response>\\w+)[^:]+.{2}(?<log_type>\\w+)[^\\d]+(?<log_type_code>[\\d]+)[^:]+.{2}(?<user_name>\\w+)[^:]+.{2}(?<user_type>\\w+)[^\\d]+(?<user_type_code>[\\d]+)/\n| limit 20\n| display @timestamp, hsm_id,sequence,user_type,user_name,opcode,response",
+                "region": "us-east-1",
+                "title": "Log group: /aws/cloudhsm/cluster-5x7cfd2hgt3",
+                "view": "table"
+            }
+        }
+    ]
+}
