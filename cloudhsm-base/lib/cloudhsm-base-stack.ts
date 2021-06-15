@@ -381,7 +381,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ type: 'CO', username: 'admin'}),
         generateStringKey: 'password',
-        excludeCharacters: '"\';=:'
+        excludeCharacters: '"\';=:-'
       }
     });
     coPassword.grantRead(ec2admin_role);
@@ -392,7 +392,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ type: 'CU', username: 'client'}),
         generateStringKey: 'password',
-        excludeCharacters: '"\';=:'
+        excludeCharacters: '"\';=:-'
       }
     });
     cuPassword.grantRead(ec2admin_role);
