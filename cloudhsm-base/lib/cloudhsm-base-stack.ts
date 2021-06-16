@@ -503,9 +503,14 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
     cloudHSMClusterReady.node.addDependency(cloudHSM1);
 
+    const cloudhsm2Provider = new custom.Provider(this, 'CloudHSM2Provider', {
+      onEventHandler: cloudHsm1Function,
+      isCompleteHandler: cloudHsm1IsCompleteFunction,
+      queryInterval: cdk.Duration.seconds(60)
+    });
 
     const cloudHSM2 = new cdk.CustomResource(this, 'cloudHSMC2CR', {
-      serviceToken: cloudhsm1Provider.serviceToken,
+      serviceToken: cloudhsm2Provider.serviceToken,
       properties: {
         ClusterId: cloudHSMCluster.getAttString("ClusterId")
       }
@@ -562,6 +567,33 @@ export class CloudhsmBaseStack extends cdk.Stack {
     bootstrapClientInstance.node.addDependency(cloudHSM2);    
 
     // Demo App Container image
+
+    const ecsServiceRoleCheckFunction = new lambda.Function(this, 'ecsServiceRoleCheck', {
+      runtime: lambda.Runtime.PYTHON_3_8,
+      code: lambda.Code.fromAsset('../custom_resources/ecs_service_role'),
+      handler: 'lambda_function.handler'
+    });
+
+    ecsServiceRoleCheckFunction.role?.addToPrincipalPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "iam:CreateServiceLinkedRole",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:GetRole"
+
+      ],
+      resources: ["*"]
+    }));
+
+    const ecsServiceRoleProvider = new custom.Provider(this,'ecsServiceRoleProvider', {
+      onEventHandler: ecsServiceRoleCheckFunction
+    });
+
+    const ecsServiceRoleCR = new cdk.CustomResource(this,'ecsServiceRoleCR', {
+      serviceToken: ecsServiceRoleProvider.serviceToken
+    });
+
     const ecsCloudHSMTestCluster = new ecs.Cluster(this, "CloudHSMTest", {
       vpc: vpc,
       containerInsights: true
