@@ -73,7 +73,7 @@ def isComplete(event, context):
         #Check if all HSMs were removed before deleting
 
         logging.info(resp)
-        if (resp['Clusters'][0]['State'] != "DELETE_IN_PROGRESS") and (len(resp['Clusters'][0]['Hsms']) == 0):
+        if (resp['Clusters'][0]['State'] != "DELETE_IN_PROGRESS") and (resp['Clusters'][0]['State'] != "DELETED") and (len(resp['Clusters'][0]['Hsms']) == 0):
             resp = hsm_client.delete_cluster(
             ClusterId=event['PhysicalResourceId']
             )
