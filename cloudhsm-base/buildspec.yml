@@ -1,0 +1,19 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+      - cd ./custom_resources/initialize_cluster/
+      - pip3 install -r requirements.txt -t ./dependencies
+      - cd ../../
+      - npm install aws-cdk -g
+      - npm install
+      - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
+  build:
+    commands:
+      - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
+      - npm run build
+      - cdk deploy CloudhsmBaseStack --require-approval=never --verbose -O ./out/out.json
+artifacts:
+  files: './out/out.json'
