@@ -117,7 +117,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsmClusterFunction = new lambda.Function(this, 'cloudHSMProvider', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cloudhsm_cluster/'),
+      code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
       handler: 'lambda_function.handler'
     });
 
@@ -160,7 +160,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsmClusterIsCompleteFunction = new lambda.Function(this, 'cloudHSMProviderIsComplete', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cloudhsm_cluster/'),
+      code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
       handler: 'lambda_function.isComplete'      
     });
 
@@ -202,7 +202,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsm1Function = new lambda.Function(this, 'cloudHSM1Provider', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cloudhsm_hsm/'),
+      code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
       handler: 'lambda_function.handler'
     });
 
@@ -244,7 +244,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsm1IsCompleteFunction = new lambda.Function(this, 'cloudHSM1ProviderIsComplete', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cloudhsm_hsm/'),
+      code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
       handler: 'lambda_function.isComplete'      
     });
 
@@ -286,7 +286,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     // Generate RSA Key and CO, CU Secrets in a lambda function.
     const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/initialize_cluster/'),
+      code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
       handler: 'lambda_function.handler',
       timeout: cdk.Duration.seconds(300)      // RSA Key generation take a little apparently depending on the underlying HW
     });
@@ -305,7 +305,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const initializeClusterIsCompleteFunction = new lambda.Function(this, 'initializeClusterIsCompleteFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/initialize_cluster/'),
+      code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
       handler: 'lambda_function.isComplete'      
     });
 
@@ -404,13 +404,13 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
 
     const activateScriptAsset = new Asset(this, 'activateScript', {
-      path: path.join(__dirname,'../../custom_resources/cloudHSMActivate.expect')
+      path: path.join(__dirname,'./../custom_resources/cloudHSMActivate.expect')
     });
 
     
     const activateClusterFunction = new lambda.Function(this, 'activateClusterFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/activate_cluster'),
+      code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
       handler: 'lambda_function.handler'
     });
   
@@ -427,7 +427,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const activateClusterCompleteFunction = new lambda.Function(this, 'activateClusterCompleteFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/activate_cluster'),
+      code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
       handler: 'lambda_function.isComplete'
     });
 
@@ -463,7 +463,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsmReadyFunction = new lambda.Function(this, 'cloudHSMReadyProvider', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cluster_ready_gate/'),
+      code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
       handler: 'lambda_function.handler'
     });
 
@@ -477,7 +477,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const cloudHsmReadyIsCompleteFunction = new lambda.Function(this, 'cloudHSMReadyIsCompleteProvider', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/cluster_ready_gate/'),
+      code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
       handler: 'lambda_function.isComplete'
     });
 
@@ -519,7 +519,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const bootstrapFunction = new lambda.Function(this, 'bootstrapFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/bootstrap_instances'),
+      code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
       handler: 'lambda_function.handler'
     });
     runDocumentLogs.grantWrite(bootstrapFunction);
@@ -535,7 +535,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const bootstrapCompleteFunction = new lambda.Function(this, 'bootstrapCompleteFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/bootstrap_instances'),
+      code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
       handler: 'lambda_function.isComplete'
     });
 
@@ -570,7 +570,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const ecsServiceRoleCheckFunction = new lambda.Function(this, 'ecsServiceRoleCheck', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('../custom_resources/ecs_service_role'),
+      code: lambda.Code.fromAsset('./custom_resources/ecs_service_role'),
       handler: 'lambda_function.handler'
     });
 
@@ -630,7 +630,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     taskDefinition.addContainer('container', {
-      image: ecs.ContainerImage.fromAsset(path.join(__dirname, '../../examples/pkcs11-5.0-sample/')),
+      image: ecs.ContainerImage.fromAsset(path.join(__dirname, './../pkcs11-5.0-sample/')),
       memoryLimitMiB: 512,
       cpu: 256,
       logging: logging,
