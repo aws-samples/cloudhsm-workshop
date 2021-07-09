@@ -630,7 +630,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     taskDefinition.addContainer('container', {
-      image: ecs.ContainerImage.fromRegistry('public.ecr.aws/f7b5u8s2/aws-cloudhsm-pkcs11-examples'),
+      image: ecs.ContainerImage.fromAsset(path.join(__dirname, '../../examples/pkcs11-5.0-sample/')),
       memoryLimitMiB: 512,
       cpu: 256,
       logging: logging,
