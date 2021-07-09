@@ -1,14 +1,7 @@
-# Welcome to your CDK TypeScript project!
+# AWS CloudHSM Workshop  
 
-This is a blank project for TypeScript development with CDK.
+This repo contains the code for automatic deployment of resources used in the advanced section of the CloudHSM Workshop.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+### License
 
-## Useful commands
-
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
+This library is licensed under the MIT-0 License. See the LICENSE file.
