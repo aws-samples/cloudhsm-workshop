@@ -79,8 +79,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       allowAllOutbound: true
     });
 
-    //ec2InstanceSG.addIngressRule(ec2.Peer.anyIpv4(),ec2.Port.tcp(22),'Allow SSH Inbound');
-    ec2InstanceSG.addIngressRule(ec2.Peer.anyIpv4(),ec2.Port.tcp(443),'Allow HTTPS Inbound');
+   ec2InstanceSG.addIngressRule(ec2.Peer.anyIpv4(),ec2.Port.tcp(443),'Allow HTTPS Inbound');
 
     const adminInstance = new ec2.Instance(this, 'adminInstance', {
       instanceType: new ec2.InstanceType("t3.nano"),
@@ -93,12 +92,17 @@ export class CloudhsmBaseStack extends cdk.Stack {
       }
     });    
 
-    const clientInstance = new ec2.Instance(this, 'clientInstance', {
+    // This instances is not used for the workshop, however it will force a failure if the account need validation in the
+    // region before starting the long cluster creation process:
+    // "Your request for accessing resources in this region is being validated, and you will not be able to launch additional 
+    // resources in this region until the validation is complete. We will notify you by email once your request has been validated. 
+    // While normally resolved within minutes, please allow up to 4 hours for this process to complete. 
+    // If the issue still persists, please let us know by writing to aws-verification@amazon.com for further assistance. 
+    // (Service: AmazonEC2; Status Code: 400; Error Code: PendingVerification;
+    const dummyInstance = new ec2.Instance(this, 'dummyInstance', {
       instanceType: new ec2.InstanceType("t3.nano"),
       machineImage: amznLinux,
       vpc: vpc,
-      role: ec2client_role,
-      securityGroup: ec2InstanceSG,
       vpcSubnets: {
         subnets: [vpc.privateSubnets[1]]
       }
@@ -191,12 +195,11 @@ export class CloudhsmBaseStack extends cdk.Stack {
         SubnetIds: privateSubnetList.subnetIds
       }
     });
-
+ 
 
     const clusterSG = ec2.SecurityGroup.fromSecurityGroupId(this,'CloudHSMClusterSG', cloudHSMCluster.getAttString('SecurityGroupId'));
     clusterSG.node.addDependency(cloudHSMCluster);
     adminInstance.addSecurityGroup(clusterSG);
-    clientInstance.addSecurityGroup(clusterSG);
     clientInstanceUbuntu.addSecurityGroup(clusterSG);
 
 
@@ -517,54 +520,54 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });   
     cloudHSM2.node.addDependency(cloudHSMClusterReady);
 
-    const bootstrapFunction = new lambda.Function(this, 'bootstrapFunction', {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
-      handler: 'lambda_function.handler'
-    });
-    runDocumentLogs.grantWrite(bootstrapFunction);
+    // const bootstrapFunction = new lambda.Function(this, 'bootstrapFunction', {
+    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
+    //   handler: 'lambda_function.handler'
+    // });
+    // runDocumentLogs.grantWrite(bootstrapFunction);
 
-    bootstrapFunction.role?.addToPrincipalPolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "ssm:SendCommand",
-        "ssm:GetCommandInvocation"
-      ],
-      resources: ["*"]
-    }));
+    // bootstrapFunction.role?.addToPrincipalPolicy(new iam.PolicyStatement({
+    //   effect: iam.Effect.ALLOW,
+    //   actions: [
+    //     "ssm:SendCommand",
+    //     "ssm:GetCommandInvocation"
+    //   ],
+    //   resources: ["*"]
+    // }));
 
-    const bootstrapCompleteFunction = new lambda.Function(this, 'bootstrapCompleteFunction', {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
-      handler: 'lambda_function.isComplete'
-    });
+    // const bootstrapCompleteFunction = new lambda.Function(this, 'bootstrapCompleteFunction', {
+    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
+    //   handler: 'lambda_function.isComplete'
+    // });
 
-    bootstrapCompleteFunction.role?.addToPrincipalPolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "ssm:SendCommand",
-        "ssm:GetCommandInvocation"
-      ],
-      resources: ["*"]
-    }));
+    // bootstrapCompleteFunction.role?.addToPrincipalPolicy(new iam.PolicyStatement({
+    //   effect: iam.Effect.ALLOW,
+    //   actions: [
+    //     "ssm:SendCommand",
+    //     "ssm:GetCommandInvocation"
+    //   ],
+    //   resources: ["*"]
+    // }));
 
-    const bootstrapInstanceProvider = new custom.Provider(this,'bootstrapInstanceProvider', {
-      onEventHandler: bootstrapFunction,
-      isCompleteHandler: bootstrapCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
-    });
+    // const bootstrapInstanceProvider = new custom.Provider(this,'bootstrapInstanceProvider', {
+    //   onEventHandler: bootstrapFunction,
+    //   isCompleteHandler: bootstrapCompleteFunction,
+    //   queryInterval: cdk.Duration.seconds(60)
+    // });
 
-    const bootstrapClientInstance = new cdk.CustomResource(this,'bootstrapClientInstance', {
-      serviceToken: bootstrapInstanceProvider.serviceToken,
-      properties: {
-        InstanceId : clientInstance.instanceId,
-        SelfSignedParamName: selfSignedCert.parameterName,
-        HSMIpAddress: cloudHSM1.getAttString("EniIp"),
-        LogGroupName: runDocumentLogs.logGroupName,
-        OSType: "AmazonLinux2"
-      }
-    });
-    bootstrapClientInstance.node.addDependency(cloudHSM2);    
+    // const bootstrapClientInstance = new cdk.CustomResource(this,'bootstrapClientInstance', {
+    //   serviceToken: bootstrapInstanceProvider.serviceToken,
+    //   properties: {
+    //     InstanceId : clientInstance.instanceId,
+    //     SelfSignedParamName: selfSignedCert.parameterName,
+    //     HSMIpAddress: cloudHSM1.getAttString("EniIp"),
+    //     LogGroupName: runDocumentLogs.logGroupName,
+    //     OSType: "AmazonLinux2"
+    //   }
+    // });
+    // bootstrapClientInstance.node.addDependency(cloudHSM2);    
 
     // Demo App Container image
 
