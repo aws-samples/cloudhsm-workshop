@@ -9,9 +9,12 @@ HSM_IP=$(aws cloudhsmv2 describe-clusters --filters clusterIds=$CLUSTER_ID --que
 HSM_USER=$(aws secretsmanager get-secret-value --secret-id '/cloudhsm/workshop/cupassowrd' --query SecretString --output text | jq .username  -r)
 HSM_PASSWORD=$(aws secretsmanager get-secret-value --secret-id '/cloudhsm/workshop/cupassowrd' --query SecretString --output text | jq .password  -r)
 
-/opt/cloudhsm/bin/configure-pkcs11 -a $HSM_IP
+/opt/cloudhsm/bin/configure-pkcs11 -a $HSM_IP 
+/opt/cloudhsm/bin/configure-pkcs11 --log-type term --log-level debug
+
+
 while :
 do
-    /app/build/src/encrypt/aes_gcm --pin crypto_user:$HSM_PASSWORD
+    /app/build/src/encrypt/aes_gcm --pin $HSM_USER:$HSM_PASSWORD
     sleep 1
 done
