@@ -393,7 +393,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       description: "Crypto User password",
       secretName: "/cloudhsm/workshop/cupassowrd",
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ type: 'CU', username: 'client'}),
+        secretStringTemplate: JSON.stringify({ type: 'CU', username: 'crypto_user'}),
         generateStringKey: 'password',
         excludeCharacters: '"\';=:-'
       }
