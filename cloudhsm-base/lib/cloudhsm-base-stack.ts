@@ -10,6 +10,8 @@ import * as path from 'path';
 import * as logs from '@aws-cdk/aws-logs';
 import { DockerImageAsset } from '@aws-cdk/aws-ecr-assets';
 import * as ecs from '@aws-cdk/aws-ecs';
+import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
+import * as targets from '@aws-cdk/aws-elasticloadbalancingv2-targets';
 
 export class CloudhsmBaseStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -97,6 +99,15 @@ export class CloudhsmBaseStack extends cdk.Stack {
         subnets: [vpc.privateSubnets[0]]
       }
     });    
+
+    const lb = new elbv2.NetworkLoadBalancer(this, 'tlsOffloadLoadBalancer', {
+      vpc,
+      internetFacing: true
+    });
+  
+    const listener = lb.addListener('tlsOffloadListener', {
+        port: 443
+    });
   
 
     const clientInstanceUbuntu = new ec2.Instance(this, 'clientInstanceUbuntu', {
@@ -109,6 +120,17 @@ export class CloudhsmBaseStack extends cdk.Stack {
         subnets: [vpc.privateSubnets[1]]
       }
     });
+
+    listener.addTargets("ubuntuClientTarget",{
+      port: 443,
+      targets: [new targets.InstanceTarget(clientInstanceUbuntu,443)],
+      healthCheck: {
+        enabled: true,
+        healthyThresholdCount: 2,
+        unhealthyThresholdCount: 2,
+        interval: cdk.Duration.seconds(10)
+      }
+    })
 
     const cloudHsmClusterFunction = new lambda.Function(this, 'cloudHSMProvider', {
       runtime: lambda.Runtime.PYTHON_3_8,
