@@ -15,6 +15,12 @@ export class CloudhsmBaseStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    var expressMode = 'false';
+    if (this.node.tryGetContext('express') != undefined)
+    {
+      expressMode = this.node.tryGetContext('express');
+    }
+
     const vpc = new ec2.Vpc(this, 'ClusterVPC',{
       cidr: "10.0.0.0/16",
       maxAzs: 2
@@ -169,7 +175,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const cloudhsmProvider = new custom.Provider(this, 'CloudHSMClusterProvider', {
       onEventHandler: cloudHsmClusterFunction,
       isCompleteHandler: cloudHsmClusterIsCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
+      queryInterval: cdk.Duration.seconds(15)
     });
 
 
@@ -251,7 +257,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const cloudhsm1Provider = new custom.Provider(this, 'CloudHSM1Provider', {
       onEventHandler: cloudHsm1Function,
       isCompleteHandler: cloudHsm1IsCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
+      queryInterval: cdk.Duration.seconds(15)
     });
 
     const cloudHSM1 = new cdk.CustomResource(this, 'cloudHSMC1CR', {
@@ -310,7 +316,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const generateKeysProvider = new custom.Provider(this, 'generateKeysProvider', {
       onEventHandler: initializeClusterFunction,
       isCompleteHandler: initializeClusterIsCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
+      queryInterval: cdk.Duration.seconds(15)
     });
 
    
@@ -431,7 +437,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const activateClusterProvider = new custom.Provider(this,'activateClusterProvider', {
       onEventHandler: activateClusterFunction,
       isCompleteHandler: activateClusterCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
+      queryInterval: cdk.Duration.seconds(15)
     });
 
     const activateCluster = new cdk.CustomResource(this,'activateCluster', {
@@ -480,7 +486,6 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const cloudHsmReadyProvider = new custom.Provider(this,'cloudHsmReadyProvider', {
       onEventHandler: cloudHsmReadyFunction,
       isCompleteHandler: cloudHsmReadyIsCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
     });
 
     const cloudHSMClusterReady = new cdk.CustomResource(this,'cloudHSMReadyGateCR', {
@@ -491,19 +496,24 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
     cloudHSMClusterReady.node.addDependency(cloudHSM1);
 
-    const cloudhsm2Provider = new custom.Provider(this, 'CloudHSM2Provider', {
-      onEventHandler: cloudHsm1Function,
-      isCompleteHandler: cloudHsm1IsCompleteFunction,
-      queryInterval: cdk.Duration.seconds(60)
-    });
+    if (expressMode === 'false')
+    {      
+      const cloudhsm2Provider = new custom.Provider(this, 'CloudHSM2Provider', {
+        onEventHandler: cloudHsm1Function,
+        isCompleteHandler: cloudHsm1IsCompleteFunction,
+      });
 
-    const cloudHSM2 = new cdk.CustomResource(this, 'cloudHSMC2CR', {
-      serviceToken: cloudhsm2Provider.serviceToken,
-      properties: {
-        ClusterId: cloudHSMCluster.getAttString("ClusterId")
-      }
-    });   
-    cloudHSM2.node.addDependency(cloudHSMClusterReady);
+      const cloudHSM2 = new cdk.CustomResource(this, 'cloudHSMC2CR', {
+        serviceToken: cloudhsm2Provider.serviceToken,
+        properties: {
+          ClusterId: cloudHSMCluster.getAttString("ClusterId")
+        }
+      });   
+      cloudHSM2.node.addDependency(cloudHSMClusterReady);
+
+    }
+
+
 
     // const bootstrapFunction = new lambda.Function(this, 'bootstrapFunction', {
     //   runtime: lambda.Runtime.PYTHON_3_8,
@@ -539,7 +549,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     // const bootstrapInstanceProvider = new custom.Provider(this,'bootstrapInstanceProvider', {
     //   onEventHandler: bootstrapFunction,
     //   isCompleteHandler: bootstrapCompleteFunction,
-    //   queryInterval: cdk.Duration.seconds(60)
+    //   queryInterval: cdk.Duration.seconds(15)
     // });
 
     // const bootstrapClientInstance = new cdk.CustomResource(this,'bootstrapClientInstance', {
