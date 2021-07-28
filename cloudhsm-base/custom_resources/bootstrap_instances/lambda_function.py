@@ -38,6 +38,7 @@ def onChange(event, context):
             'aws --region ' + region + ' ssm get-parameter --name \'' + self_signed_param + '\' --query Parameter.Value --output text > customerCA.crt',
             'sudo mv customerCA.crt /opt/cloudhsm/etc/customerCA.crt',
             'sudo /opt/cloudhsm/bin/configure -a ' + hsm_ip,
+            'sudo /opt/cloudhsm/bin/configure --cmu ' + hsm_ip,
             ]
 
     if os_type == 'Ubuntu':
@@ -48,6 +49,7 @@ def onChange(event, context):
                 'aws --region ' + region + ' ssm get-parameter --name \'' + self_signed_param + '\' --query Parameter.Value --output text > customerCA.crt',
                 'sudo mv customerCA.crt /opt/cloudhsm/etc/customerCA.crt',
                 'sudo /opt/cloudhsm/bin/configure -a ' + hsm_ip,
+                'sudo /opt/cloudhsm/bin/configure --cmu ' + hsm_ip,
                 ]
 
 
