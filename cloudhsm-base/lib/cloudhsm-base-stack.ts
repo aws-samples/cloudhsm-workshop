@@ -91,22 +91,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
         subnets: [vpc.privateSubnets[0]]
       }
     });    
-
-    // This instances is not used for the workshop, however it will force a failure if the account need validation in the
-    // region before starting the long cluster creation process:
-    // "Your request for accessing resources in this region is being validated, and you will not be able to launch additional 
-    // resources in this region until the validation is complete. We will notify you by email once your request has been validated. 
-    // While normally resolved within minutes, please allow up to 4 hours for this process to complete. 
-    // If the issue still persists, please let us know by writing to aws-verification@amazon.com for further assistance. 
-    // (Service: AmazonEC2; Status Code: 400; Error Code: PendingVerification;
-    const dummyInstance = new ec2.Instance(this, 'dummyInstance', {
-      instanceType: new ec2.InstanceType("t3.nano"),
-      machineImage: amznLinux,
-      vpc: vpc,
-      vpcSubnets: {
-        subnets: [vpc.privateSubnets[1]]
-      }
-    });      
+  
 
     const clientInstanceUbuntu = new ec2.Instance(this, 'clientInstanceUbuntu', {
       instanceType: new ec2.InstanceType("t3.nano"),
