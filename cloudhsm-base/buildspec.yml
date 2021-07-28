@@ -14,6 +14,6 @@ phases:
     commands:
       - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
       - npm run build
-      - cdk deploy CloudhsmBaseStack --require-approval=never --verbose -O ./out/out.json
+      - cdk deploy CloudhsmBaseStack --context express="true" --require-approval=never --verbose -O ./out/out.json
 artifacts:
   files: './out/out.json'
