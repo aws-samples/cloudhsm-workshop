@@ -1,0 +1,11 @@
+stages:
+    - build
+    - approve
+
+build:
+    stage: build
+    script:
+        - echo 'Manual upload of artifact'
+    when: manual
+    allow_failure: false
+
