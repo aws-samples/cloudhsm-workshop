@@ -10,6 +10,7 @@ HSM_USER=$(aws secretsmanager get-secret-value --secret-id '/cloudhsm/workshop/c
 HSM_PASSWORD=$(aws secretsmanager get-secret-value --secret-id '/cloudhsm/workshop/cupassowrd' --query SecretString --output text | jq .password  -r)
 
 /opt/cloudhsm/bin/configure-pkcs11 -a $HSM_IP 
+#Enable DEBUG level just for demonstration purposes, set to INFO to avoid performance issues in a real world scenario
 /opt/cloudhsm/bin/configure-pkcs11 --log-type term --log-level debug
 
 
