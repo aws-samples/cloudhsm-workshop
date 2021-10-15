@@ -9,4 +9,4 @@ rm -f ./artifacts/*
 mkdir -p artifacts
 
 cd ./cloudhsm-base
-zip -r ../artifacts/CloudHSMWorkshop.zip . -x "node_modules/**" "cdk.out/*" "out/*"
+zip -r ../artifacts/SourceCode.zip . -x "node_modules/**" "cdk.out/*" "out/*"
