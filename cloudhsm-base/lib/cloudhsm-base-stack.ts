@@ -300,7 +300,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     // Generate RSA Key and CO, CU Secrets in a lambda function.
 
     const initializeClusterFunction = new lambda.DockerImageFunction(this, 'initializeClusterDockerImage', {
-      code: lambda.DockerImageCode.fromImageAsset(path.join('./custom_resources/initialize_cluster/', 'Dockerfile')),
+      code: lambda.DockerImageCode.fromImageAsset('./custom_resources/initialize_cluster/'),
     });
 
     // const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
