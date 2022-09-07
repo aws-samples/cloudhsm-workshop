@@ -301,6 +301,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const initializeClusterFunction = new lambda.DockerImageFunction(this, 'initializeClusterDockerImage', {
       code: lambda.DockerImageCode.fromImageAsset('./custom_resources/initialize_cluster/'),
+      timeout: cdk.Duration.seconds(300)
     });
 
     // const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
