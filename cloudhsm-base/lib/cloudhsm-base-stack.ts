@@ -298,12 +298,17 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
 
     // Generate RSA Key and CO, CU Secrets in a lambda function.
-    const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
-      handler: 'lambda_function.handler',
-      timeout: cdk.Duration.seconds(300)      // RSA Key generation take a little apparently depending on the underlying HW
+
+    const initializeClusterFunction = new lambda.DockerImageFunction(this, 'initializeClusterDockerImage', {
+      code: lambda.DockerImageCode.fromImageAsset(path.join('./custom_resources/initialize_cluster/', 'Dockerfile')),
     });
+
+    // const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
+    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
+    //   handler: 'lambda_function.handler',
+    //   timeout: cdk.Duration.seconds(300)      // RSA Key generation take a little apparently depending on the underlying HW
+    // });
 
     if (initializeClusterFunction.role) {
       initializeClusterFunction.role.addToPrincipalPolicy(new iam.PolicyStatement({
