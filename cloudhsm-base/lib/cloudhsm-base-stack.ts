@@ -326,7 +326,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const initializeClusterIsCompleteFunction = new lambda.Function(this, 'initializeClusterIsCompleteFunction', {
       runtime: lambda.Runtime.PYTHON_3_8,
       code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
-      handler: 'lambda_function.isComplete'      
+      handler: 'complete.isComplete'      
     });
 
     if (initializeClusterIsCompleteFunction.role) {
