@@ -1,13 +1,17 @@
-FROM public.ecr.aws/lambda/python:3.8
+FROM public.ecr.aws/amazonlinux/amazonlinux:2022
 
-# Copy function code
+RUN yum update -y \
+    && yum install zip -y \
+    && python3 -m ensurepip --upgrade
+   
+RUN pip3 install \
+    --platform manylinux2010_x86_64 \
+    --implementation cp \
+    --python 3.9 \
+    --only-binary=:all: --upgrade \
+    --target "${LAMBDA_TASK_ROOT}" \
+    cryptography
+
 COPY lambda_function.py ${LAMBDA_TASK_ROOT}
 
-# Install the function's dependencies using file requirements.txt
-# from your project folder.
-
-COPY requirements.txt  .
-RUN  pip3 install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
-
-# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
-CMD [ "lambda_function.handler" ]
+CMD [ "lambda_function.handler" ] 
