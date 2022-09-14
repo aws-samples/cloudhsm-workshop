@@ -25,4 +25,7 @@ stages:          # List of stages for jobs, and their order of execution
   - test
   - deploy
 
+variables:
+  SAST_DISABLED: "false"
+
 
