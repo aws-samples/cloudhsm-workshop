@@ -1,10 +1,8 @@
 from __future__ import print_function
-import sys
-sys.path.append('./dependencies')
 
 import logging
-from time import sleep
 import boto3
+import datetime
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -12,7 +10,11 @@ logger.setLevel(logging.DEBUG)
 ssm = boto3.client('ssm')
 secrets = boto3.client('secretsmanager')
 hsm = boto3.client('cloudhsmv2')
-from OpenSSL import crypto
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
 
 def get_cluster_csr(cluster_id):
     response = hsm.describe_clusters(Filters={
@@ -25,42 +27,61 @@ def get_cluster_csr(cluster_id):
 
     return response['Clusters'][0]['Certificates']['ClusterCsr']
 def generate_self_signed_certificate(key):
-    cert = crypto.X509()
-    cert.get_subject().C = "UK"
-    cert.get_subject().ST = "Suffolk"
-    cert.get_subject().L = "Ipswich"
-    cert.get_subject().O = "Amazon"
-    cert.get_subject().OU = "AWS"
-    cert.get_subject().CN = "Demo Root Certificate (DO NOT TRUST ME)"
-    cert.set_serial_number(1000)
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
-    cert.set_issuer(cert.get_subject())
-    cert.set_pubkey(key)
-    cert.sign(key, 'sha256')
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Company"),
+        x509.NameAttribute(NameOID.COMMON_NAME, u"mysite.com"),
+    ])
+
+    builder = x509.CertificateBuilder()
+    builder = builder.subject_name(subject)
+    builder = builder.issuer_name(issuer)
+    builder = builder.public_key(key.public_key())
+    builder = builder.serial_number(x509.random_serial_number())
+    builder = builder.not_valid_before(datetime.datetime.utcnow())
+    builder = builder.not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=10))
+    builder = builder.add_extension(
+        x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+        critical=False,
+    )
+    cert = builder.sign(key, hashes.SHA256())
 
     return cert
 
 def sign_cluster_csr(csr=None, ca_key=None, ca_cert=None):
+    one_day = datetime.timedelta(1, 0, 0)
     # Load the CSR into openssl container
-    csr_obj = crypto.load_certificate_request(crypto.FILETYPE_PEM, csr)
+    csr_obj = x509.load_pem_x509_csr(csr.encode('utf-8'))
 
     # Build the certificate
-    cert = crypto.X509()
-    cert.set_serial_number(1001)
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
-    cert.set_issuer(ca_cert.get_subject())
-    cert.set_subject(csr_obj.get_subject())
-    cert.set_pubkey(csr_obj.get_pubkey())
-    cert.sign(ca_key, 'sha256')
+    builder = x509.CertificateBuilder()
+    builder = builder.not_valid_before(datetime.datetime.today() - one_day)
+    builder = builder.not_valid_after(datetime.datetime.today() + (one_day * 30))
+    builder = builder.serial_number(x509.random_serial_number())
+    builder = builder.public_key(csr_obj.public_key())
+    builder = builder.issuer_name(ca_cert.subject)
+    builder = builder.subject_name(csr_obj.subject)
+    builder = builder.add_extension(
+      x509.SubjectAlternativeName(
+        [x509.DNSName(u'cryptography.io')]
+      ),
+      critical=False
+    )
 
-    return cert
+    builder = builder.add_extension(
+      x509.BasicConstraints(ca=False, path_length=None), critical=True,
+    )
+    certificate = builder.sign(
+      private_key=ca_key, algorithm=hashes.SHA256(),
+    )
+    
+    return certificate
 
 def generate_rsa_key(key_len):
     logger.info("Generating RSA KEY")
-    key = crypto.PKey()
-    key.generate_key(crypto.TYPE_RSA, key_len)
+    key = rsa.generate_private_key(key_size=key_len,public_exponent=65537)
     return key    
 
 def isComplete(event, context):
@@ -99,29 +120,29 @@ def onCreate(event, context):
 
     resp = secrets.put_secret_value(
         SecretId=rsaSecret,
-        SecretString=crypto.dump_privatekey(crypto.FILETYPE_PEM,key).decode()
+        SecretString=key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.TraditionalOpenSSL,encryption_algorithm=serialization.NoEncryption()).decode("UTF-8")
     )
     logger.info(resp)
 
     root_cert = generate_self_signed_certificate(key)
-
-
     csr = get_cluster_csr(
         cluster_id=cluster_id
         )    
     cluster_certificate = sign_cluster_csr(csr=csr, ca_key=key, ca_cert=root_cert)
-
+    
     resp = hsm.initialize_cluster(
         ClusterId=cluster_id,
-        SignedCert=crypto.dump_certificate(crypto.FILETYPE_PEM,cluster_certificate).decode(),
-        TrustAnchor=crypto.dump_certificate(crypto.FILETYPE_PEM,root_cert).decode()
+        SignedCert=cluster_certificate.public_bytes(encoding=serialization.Encoding.PEM).decode('utf-8'),
+        TrustAnchor=root_cert.public_bytes(encoding=serialization.Encoding.PEM).decode('utf-8')
         )
+    logger.info(resp)
 
     resp = ssm.put_parameter(
         Name=selfSignedCert,
-        Value=crypto.dump_certificate(crypto.FILETYPE_PEM,root_cert).decode(),
+        Value=root_cert.public_bytes(encoding=serialization.Encoding.PEM).decode('utf-8'),
         Overwrite=True
         )
+    logger.info(resp)
     
     return True
 
