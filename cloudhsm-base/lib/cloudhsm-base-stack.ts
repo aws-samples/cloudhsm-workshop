@@ -30,7 +30,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     const privateSubnetList = vpc.selectSubnets({
-      subnetType: ec2.SubnetType.PRIVATE
+      subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
     });
 
 

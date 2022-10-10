@@ -10,7 +10,6 @@ logger.setLevel(logging.DEBUG)
 
 ssm = boto3.client('ssm')
 
-
 def send_command(instances, commands, log_group):
     logger.debug("Sending command to %s : %s" % (instances, commands))
     try:
