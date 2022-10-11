@@ -11,17 +11,6 @@ secret_detection:
     paths:
       - gl-secret-detection-report.json
     when: always
-    
-secret_convert:
-  stage: convert
-  dependencies:
-    - secret_detection
-  script:
-    - pip3 install SecScanner2JUnit
-    - ss2ju secrets gl-secret-detection-report.json gl-secret-detection-report.xml
-  artifacts:
-    reports:
-      junit: gl-secret-detection-report.xml
 
 semgrep-sast:
   after_script:
@@ -31,32 +20,3 @@ semgrep-sast:
       - gl-sast-semgrep-report.json
     when: always
 
-brakeman-sast:
-  after_script:
-    - cp gl-sast-report.json gl-sast-brakeman-report.json
-  artifacts:
-    paths:
-      - gl-sast-brakeman-report.json
-    when: always
-
-semgrep-sast-convert:
-  stage: convert
-  dependencies:
-    - semgrep-sast
-  script:
-    - pip3 install SecScanner2JUnit
-    - ss2ju sast gl-sast-semgrep-report.json gl-sast-semgrep-report.xml
-  artifacts:
-    reports:
-      junit: gl-sast-semgrep-report.xml
-      
-brakeman-sast-convert:
-  stage: convert
-  dependencies:
-    - brakeman-sast
-  script:
-    - pip3 install SecScanner2JUnit
-    - ss2ju sast gl-sast-brakeman-report.json gl-sast-brakeman-report.xml
-  artifacts:
-    reports:
-      junit: gl-sast-brakeman-report.xml
