@@ -2,7 +2,7 @@ stages:
   - test
   - convert
   
-- include:
+include:
   - template: Security/SAST.gitlab-ci.yml
   - template: Security/Secret-Detection.gitlab-ci.yml
   
@@ -22,7 +22,7 @@ secret_convert:
   artifacts:
     reports:
       junit: gl-secret-detection-report.xml
-        
+
 semgrep-sast:
   after_script:
     - cp gl-sast-report.json gl-sast-semgrep-report.json
