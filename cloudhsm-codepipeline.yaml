@@ -529,7 +529,7 @@ Resources:
                 - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
                 - cdk deploy CloudhsmBaseStack --context express="false" --require-approval=never --verbose -O out.json
           artifacts:
-            files: 'out.json'              
+            files: 'cloudhsm-workshop/cloudhsm-base/out.json'              
               '''
               with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zipper:
                   file_name = 'buildspec.yaml'
