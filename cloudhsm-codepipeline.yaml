@@ -143,6 +143,7 @@ Resources:
         RestrictPublicBuckets: true
         IgnorePublicAcls: true
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
   PipelineRole:
     Type: AWS::IAM::Role
@@ -449,6 +450,7 @@ Resources:
         RestrictPublicBuckets: true
         IgnorePublicAcls: true
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
   SourceCodeLambdaRole:
     Type: AWS::IAM::Role
@@ -553,3 +555,13 @@ Resources:
     Type: Custom::Buildspec
     Properties:
       ServiceToken: !GetAtt SourceCodeLambdaFunction.Arn
+
+
+Outputs:
+  SourceCodeBucket:
+    Description: Source Code Bucket 
+    Value: !Ref PipelineSourceBucket
+  
+  PipelineArtifactBucket:
+    Description: Pipeline Artifact Bucket
+    Value: !Ref PipelineArtifactsBucket
