@@ -142,8 +142,16 @@ Resources:
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
         IgnorePublicAcls: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
+
 
   PipelineRole:
     Type: AWS::IAM::Role
@@ -449,8 +457,13 @@ Resources:
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
         IgnorePublicAcls: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256    
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
 
   SourceCodeLambdaRole:
     Type: AWS::IAM::Role

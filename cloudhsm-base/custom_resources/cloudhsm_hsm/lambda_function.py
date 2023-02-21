@@ -61,12 +61,28 @@ def onDelete(event, context):
     hsmId = event['PhysicalResourceId']
     props = event['ResourceProperties']
     clusterId = props['ClusterId'] 
+
+    #HSM Id could change during life of the cluster so we can't trust it on delete...
+
+
     try:
 
-        resp = hsm_client.delete_hsm(
-            HsmId=hsmId,
-            ClusterId=clusterId
+        cluster = hsm_client.describe_clusters(
+            Filters={"clusterIds":[clusterId]}
         )
+
+        ## Delete the first active HSM
+        for hsm in cluster['Clusters'][0]['Hsms']:
+            if 'ACTIVE' == hsm['State']:
+                resp = hsm_client.delete_hsm(
+                            HsmId=hsm['HsmId'],
+                            ClusterId=clusterId
+                        )
+                break
+            else:
+                continue
+
+
     except botocore.exceptions.ClientError as error: 
         logger.info("Failed to delete HSM")
         logger.info(error)
@@ -83,18 +99,18 @@ def isComplete(event, context):
     props = event['ResourceProperties']
     clusterId = props['ClusterId']
     hsmId = event['PhysicalResourceId']
+    logger.info(resp)
 
     resp = hsm_client.describe_clusters(
             Filters={"clusterIds":[clusterId]}
         )
-    logger.info(resp)
-    
     found = False
-    for hsm in resp['Clusters'][0]['Hsms']:
-        logger.info('Cheking HSM ' + hsm['HsmId'])
-        if hsm['HsmId'] == hsmId:
-            found = True
-            if request_type == 'Create':
+
+    if request_type == 'Create':
+        for hsm in resp['Clusters'][0]['Hsms']:
+            logger.info('Cheking HSM ' + hsm['HsmId'])
+            if hsm['HsmId'] == hsmId:
+                found = True
                 if (hsm['State'] == "ACTIVE"):
                     logger.info("HSM is ready")
 
@@ -106,23 +122,16 @@ def isComplete(event, context):
                                 'EniIp': hsm['EniIp']
                             }}    
                     return output
-            elif request_type == 'Delete':
+    elif request_type == 'Delete':
+        for hsm in resp['Clusters'][0]['Hsms']:
+            logger.info('Cheking HSM ' + hsm['HsmId'])
+            if hsm['State'] == 'DELETE_IN_PROGRESS':
+                found = True
                 logging.info(resp)
-                if (hsm['State'] == "DELETED"):
-                    logger.info("Cluster deleted")
-                    return {'IsComplete': True}
-                elif (hsm['State'] == "ACTIVE"):
-                    logger.info("Attempting to delete in loop")
-                    try:
-                        resp = hsm_client.delete_hsm(
-                            HsmId=hsm['HsmId'],
-                            ClusterId=clusterId
-                        )
-                    except botocore.exceptions.ClientError as error: 
-                        logger.info("Failed to delete HSM in loop")
-                        logger.info(error)
-                
-        
+                hsmId=hsm['HsmId']
+                logger.info('Found an HSM in deletion state, will wait more ' + hsmId)
+                return {'IsComplete': False}
+
     if not found and (request_type == 'Delete'):
         logger.info("HSM " + hsmId + " was removed")
         return {'IsComplete' : True}
