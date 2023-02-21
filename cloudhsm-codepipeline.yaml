@@ -146,6 +146,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
 
