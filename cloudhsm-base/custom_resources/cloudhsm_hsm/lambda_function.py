@@ -97,10 +97,13 @@ def isComplete(event, context):
     logger.info(event)
     request_type = event['RequestType']
     props = event['ResourceProperties']
-    resp = props['ClusterId']
+    clusterId = props['ClusterId']
     hsmId = event['PhysicalResourceId']
     logger.info(resp)
 
+    resp = hsm_client.describe_clusters(
+            Filters={"clusterIds":[clusterId]}
+        )
     found = False
 
     if request_type == 'Create':
