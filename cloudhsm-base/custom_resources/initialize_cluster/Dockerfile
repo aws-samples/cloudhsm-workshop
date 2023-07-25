@@ -6,10 +6,10 @@ RUN yum update -y \
     
 RUN pip3 install boto3
    
-RUN pip3 install \
+RUN pip3 \
+    install \
     --platform manylinux2010_x86_64 \
     --implementation cp \
-    --python 3.9 \
     --only-binary=:all: --upgrade \
     --target /var/task \
     cryptography

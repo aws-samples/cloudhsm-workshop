@@ -1,22 +1,20 @@
+# The following CI file can be used as an example for how to call
+# Probe as part of a GitLab CI pipeline.
+
 stages:
-  - test
-  - convert
-  
-include:
-  - template: Security/SAST.gitlab-ci.yml
-  - template: Security/Secret-Detection.gitlab-ci.yml
-  
-secret_detection:
+- test
+
+run probe:
+  image:
+    name: registry.gitlab.aws.dev/tsd/probe/standalone-scanner:latest
+    entrypoint: [""]
+  stage: test
+  script:
+    # https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/3538 - mark directory as safe
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - /usr/bin/python3 -u /exec/app.py
   artifacts:
     paths:
-      - gl-secret-detection-report.json
-    when: always
-
-semgrep-sast:
-  after_script:
-    - cp gl-sast-report.json gl-sast-semgrep-report.json
-  artifacts:
-    paths:
-      - gl-sast-semgrep-report.json
-    when: always
-
+    - ${CI_PROJECT_DIR}/probe-out/*
+    reports:
+      junit: ${CI_PROJECT_DIR}/probe-out/probe_report.xml
