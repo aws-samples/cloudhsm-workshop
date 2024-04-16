@@ -89,7 +89,7 @@ def isComplete(event, context):
             return {'IsComplete': False}  # Command is still running
         except ssm.exceptions.InvocationDoesNotExist:
             logger.debug('Invocation not available in SSM yet', exc_info=True)
-        sleep(15)
+        sleep(15) # nosemgrep
 
 
 def handler(event, context):

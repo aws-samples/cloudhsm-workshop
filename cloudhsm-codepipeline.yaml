@@ -133,6 +133,26 @@ Resources:
       GroupDescription: "Security group with no ingress rule"
       VpcId: !Ref VPC
 
+  # Define the egress rule  
+  EgressRuleHTTP:
+    Type: AWS::EC2::SecurityGroupEgress 
+    Properties:
+      GroupId: !Ref NoIngressSecurityGroup
+      IpProtocol: tcp 
+      FromPort: 80
+      ToPort: 80
+      DestinationCidrBlock: 0.0.0.0/0
+
+  # Define the egress rule  
+  EgressRuleHTTPS:
+    Type: AWS::EC2::SecurityGroupEgress 
+    Properties:
+      GroupId: !Ref NoIngressSecurityGroup
+      IpProtocol: tcp 
+      FromPort: 443
+      ToPort: 443
+      DestinationCidrBlock: 0.0.0.0/0    
+
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -390,7 +410,7 @@ Resources:
             http = urllib3.PoolManager()
             http.request('PUT', os.environ['SIGNAL_URL'], body=encoded_body)
 
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       Environment:
         Variables:
@@ -419,7 +439,7 @@ Resources:
 
             http = urllib3.PoolManager()
             http.request('PUT', os.environ['SIGNAL_URL'], body=encoded_body)
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       Environment:
         Variables:
@@ -558,7 +578,7 @@ Resources:
 
             cfnresponse.send(event, context, responseResult, responseData, "CustomResourcePhysicalID")            
             return      
-      Runtime: python3.9
+      Runtime: python3.12
       Timeout: 900
       Environment:
         Variables:
