@@ -63,7 +63,7 @@ def onChange(event, context):
             break
         if context.get_remaining_time_in_millis() < 20000:
             raise Exception("Timed out attempting to send command to SSM")
-        sleep(15)
+        sleep(15) # nosemgrep
     
     if send_response:
         returnData['Data']["CommandId"] = send_response['Command']['CommandId']

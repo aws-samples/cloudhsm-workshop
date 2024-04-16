@@ -131,7 +131,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     })
 
     const cloudHsmClusterFunction = new lambda.Function(this, 'cloudHSMProvider', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
       handler: 'lambda_function.handler'
     });
@@ -174,7 +174,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }
 
     const cloudHsmClusterIsCompleteFunction = new lambda.Function(this, 'cloudHSMProviderIsComplete', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
       handler: 'lambda_function.isComplete'      
     });
@@ -215,7 +215,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
 
     const cloudHsm1Function = new lambda.Function(this, 'cloudHSM1Provider', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
       handler: 'lambda_function.handler'
     });
@@ -257,7 +257,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }
 
     const cloudHsm1IsCompleteFunction = new lambda.Function(this, 'cloudHSM1ProviderIsComplete', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
       handler: 'lambda_function.isComplete'      
     });
@@ -305,7 +305,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     // const initializeClusterFunction = new lambda.Function(this, 'initializeCluster', {
-    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   runtime: lambda.Runtime.PYTHON_3_12,
     //   code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
     //   handler: 'lambda_function.handler',
     //   timeout: cdk.Duration.seconds(300)      // RSA Key generation take a little apparently depending on the underlying HW
@@ -324,7 +324,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }
 
     const initializeClusterIsCompleteFunction = new lambda.Function(this, 'initializeClusterIsCompleteFunction', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
       handler: 'complete.isComplete'      
     });
@@ -429,7 +429,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     
     const activateClusterFunction = new lambda.Function(this, 'activateClusterFunction', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
       handler: 'lambda_function.handler'
     });
@@ -446,7 +446,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }));
 
     const activateClusterCompleteFunction = new lambda.Function(this, 'activateClusterCompleteFunction', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
       handler: 'lambda_function.isComplete'
     });
@@ -482,7 +482,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
 
     const cloudHsmReadyFunction = new lambda.Function(this, 'cloudHSMReadyProvider', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
       handler: 'lambda_function.handler'
     });
@@ -496,7 +496,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }));
 
     const cloudHsmReadyIsCompleteFunction = new lambda.Function(this, 'cloudHSMReadyIsCompleteProvider', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
       handler: 'lambda_function.isComplete'
     });
@@ -542,7 +542,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
 
     // const bootstrapFunction = new lambda.Function(this, 'bootstrapFunction', {
-    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   runtime: lambda.Runtime.PYTHON_3_12,
     //   code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
     //   handler: 'lambda_function.handler'
     // });
@@ -558,7 +558,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     // }));
 
     // const bootstrapCompleteFunction = new lambda.Function(this, 'bootstrapCompleteFunction', {
-    //   runtime: lambda.Runtime.PYTHON_3_8,
+    //   runtime: lambda.Runtime.PYTHON_3_12,
     //   code: lambda.Code.fromAsset('./custom_resources/bootstrap_instances'),
     //   handler: 'lambda_function.isComplete'
     // });
@@ -593,7 +593,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     // Demo App Container image
 
     const ecsServiceRoleCheckFunction = new lambda.Function(this, 'ecsServiceRoleCheck', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('./custom_resources/ecs_service_role'),
       handler: 'lambda_function.handler'
     });
