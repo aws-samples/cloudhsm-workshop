@@ -1,5 +1,5 @@
-aws_lambda_powertools==1.29.2
-boto3==1.24.27
-botocore==1.27.27
-cryptography==39.0.1
-pytest==7.1.3
+aws_lambda_powertools==2.36.0
+boto3==1.34.85
+botocore==1.34.85
+cryptography==42.0.5
+pytest==8.1.1
