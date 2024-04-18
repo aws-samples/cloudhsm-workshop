@@ -1,3 +1,4 @@
+AWSTemplateFormatVersion: "2010-09-09"
 Description: AWS CloudHSM Workshop Pipeline
 Parameters:
   EnvironmentName:

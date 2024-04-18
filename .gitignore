@@ -329,3 +329,4 @@ $RECYCLE.BIN/
 resources/code/cloudhsm-base/package-lock.json
 
 artifacts/
+ash_output/
