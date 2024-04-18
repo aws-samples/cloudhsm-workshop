@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.9
+FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.12
 
 RUN yum update -y \
     && yum install zip -y \

@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazonlinux/amazonlinux:2
+FROM --platform=linux/amd64 public.ecr.aws/amazonlinux/amazonlinux:2
 RUN yum install -y make cmake gcc gcc-c++ openssl-devel wget unzip jq
 RUN mkdir /app && mkdir /cloudhsm
 COPY ./app app

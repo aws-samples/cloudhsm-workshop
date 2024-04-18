@@ -54,7 +54,7 @@ def onCreate(event, context):
             break
         if context.get_remaining_time_in_millis() < 20000:
             raise Exception("Timed out attempting to send command to SSM")
-        sleep(15)
+        sleep(15) # nosemgrep
     
     if send_response:
         returnData['Data']["CommandId"] = send_response['Command']['CommandId']
@@ -89,7 +89,7 @@ def isComplete(event, context):
             return {'IsComplete': False}  # Command is still running
         except ssm.exceptions.InvocationDoesNotExist:
             logger.debug('Invocation not available in SSM yet', exc_info=True)
-        sleep(15)
+        sleep(15) # nosemgrep
 
 
 def handler(event, context):
