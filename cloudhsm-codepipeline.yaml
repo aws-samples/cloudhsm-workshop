@@ -142,8 +142,8 @@ Resources:
           - NoIngressSecurityGroup
           - GroupId
       Description: "Allow all Outbound rule"
-      IpProtocol: -1
-      DestinationCidrBlock: 0.0.0.0/0 
+      IpProtocol: "-1"
+      CidrIp: 0.0.0.0/0 
 
 
   PipelineArtifactsBucket:

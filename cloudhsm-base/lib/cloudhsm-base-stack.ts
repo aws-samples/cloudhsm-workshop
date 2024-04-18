@@ -324,7 +324,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     }
 
     const initializeClusterIsCompleteFunction = new lambda.Function(this, 'initializeClusterIsCompleteFunction', {
-      runtime: lambda.Runtime.PYTHON_3_12,
+      runtime: lambda.Runtime.PYTHON_3_11,    // Pip error with version 3.12
       code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
       handler: 'complete.isComplete'      
     });
