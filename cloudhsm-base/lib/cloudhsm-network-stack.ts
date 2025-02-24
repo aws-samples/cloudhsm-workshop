@@ -28,6 +28,7 @@ export class CloudHsmNetworkStack extends cdk.Stack {
     this.maxAzs = props.maxAzs;
 
     const availabilityZones = props.availabilityZones.slice(0, this.maxAzs);
+
     this._availabilityZones = availabilityZones;
 
     this.vpc = this.createVpc(availabilityZones);
