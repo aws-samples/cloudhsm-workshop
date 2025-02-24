@@ -7,23 +7,25 @@ import boto3
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-iam_client = boto3.client('iam')
+iam_client = boto3.client("iam")
 
 
 def onCreate(event, context):
 
-    props = event['ResourceProperties']
+    props = event["ResourceProperties"]
 
     try:
 
-        role = iam_client.get_role(RoleName='AWSServiceRoleForECS')
+        role = iam_client.get_role(RoleName="AWSServiceRoleForECS")
     except iam_client.exceptions.NoSuchEntityException:
-        iam_client.create_service_linked_role(AWSServiceName='ecs.amazonaws.com')
+        iam_client.create_service_linked_role(AWSServiceName="ecs.amazonaws.com")
 
     return True
 
+
 def onDelete(event, context):
     return False
+
 
 def onUpdate(event, context):
     return False
@@ -32,11 +34,13 @@ def onUpdate(event, context):
 def handler(event, context):
 
     logger.info(event)
-    request_type = event['RequestType']
-  
-    if request_type == 'Create' : return onCreate(event,context)
-    if request_type == 'Update' : return onUpdate(event,context)
-    if request_type == 'Delete' : return onDelete(event,context)
+    request_type = event["RequestType"]
+
+    if request_type == "Create":
+        return onCreate(event, context)
+    if request_type == "Update":
+        return onUpdate(event, context)
+    if request_type == "Delete":
+        return onDelete(event, context)
 
     return False
-
