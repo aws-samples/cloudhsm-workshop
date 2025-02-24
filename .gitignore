@@ -326,7 +326,9 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/osx,linux,python,windows,pycharm,visualstudiocode
-resources/code/cloudhsm-base/package-lock.json
 
+**/cdk.context.json
 artifacts/
-ash_output/
+**/ash_output/
+**/cdk.out/
+**/node_modules/
