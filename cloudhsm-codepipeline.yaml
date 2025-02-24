@@ -147,10 +147,10 @@ Resources:
       CidrIp: 0.0.0.0/0
 
 
+  # amazonq-ignore-next-line
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -165,7 +165,23 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
 
-
+  PipelineArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PipelineArtifactsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyPublicAccess
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub '${PipelineArtifactsBucket.Arn}/*'
+              - !GetAtt PipelineArtifactsBucket.Arn
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
 
   PipelineRole:
     Type: AWS::IAM::Role
@@ -460,12 +476,12 @@ Resources:
           - "PipelineEventRule"
           - "Arn"
 
+  # amazonq-ignore-next-line
   PipelineSourceBucket:
     Type: AWS::S3::Bucket
     Properties:
       VersioningConfiguration:
         Status: Enabled
-      AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -527,7 +543,7 @@ Resources:
           import zipfile
 
           def handler(event, context):
-          # Upload the file
+            # Upload the file
             s3_client = boto3.client('s3')
             responseData = {}
             responseResult = cfnresponse.FAILED
@@ -539,33 +555,37 @@ Resources:
               destinationBucket = os.environ['DESTINATION_BUCKET']
               zip_buffer = io.BytesIO()
               build_spec='''
-          version: 0.2
-          phases:
-            install:
-              runtime-versions:
-                python: 3.13
-                nodejs: 22
-              commands:
-                - git clone https://github.com/aws-samples/cloudhsm-workshop
-                - cd cloudhsm-workshop/cloudhsm-base
-                - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
-                - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
-                - npm install aws-cdk-lib aws-cdk -g
-                - npm install
-                - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
-            build:
-              commands:
-                - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
-                - cdk deploy CloudhsmBaseStack --context express="false" --require-approval=never --verbose -O out.json
-          artifacts:
-            files: 'cloudhsm-workshop/cloudhsm-base/out.json'
-              '''
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.13
+      nodejs: 22
+    commands:
+      - git clone https://github.com/aws-samples/cloudhsm-workshop
+      - cd cloudhsm-workshop/cloudhsm-base
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+      - npm install aws-cdk-lib aws-cdk -g
+      - npm install
+      - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
+  build:
+    commands:
+      - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
+      - export AWS_REGION=$AWS_REGION
+      - export CLOUDHSM_EXPRESS=false
+      - chmod +x ./scripts/deploy.sh
+      - chmod +x ./scripts/get_azs.sh
+      - ./scripts/deploy.sh
+artifacts:
+  files: 'cloudhsm-workshop/cloudhsm-base/out.json'
+'''
               with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zipper:
                   file_name = 'buildspec.yaml'
                   zipper.writestr(file_name, build_spec)
 
               s3_client.put_object(Bucket=destinationBucket, Key='SourceCode.zip', Body=zip_buffer.getvalue())
-              responseData['Data'] = "Buidspec file created"
+              responseData['Data'] = "Buildspec file created"
               responseResult = cfnresponse.SUCCESS
             except Exception as e:
               responseData['Data'] = str(e)

@@ -14,7 +14,7 @@ const context = {
   requiredAzs: parseInt(app.node.tryGetContext('requiredAzs') || '2'),
   environment: app.node.tryGetContext('environment') || 'Development',
   project: app.node.tryGetContext('project') || 'CloudHSM-Demo',
-  region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'ap-northeast-2'
 };
 
 // Define the environment
@@ -24,19 +24,10 @@ const env = {
 };
 
 // For testing, using static AZs if lookup stack is commented out
-const availableAZs = app.node.tryGetContext('availabilityZones')?.split(',') ||
-  ['us-east-1b', 'us-east-1c'];
+const availableAZs = app.node
+  .tryGetContext('availabilityZones')
+  ?.split(',') || ['ap-northeast-2a', 'ap-northeast-2b', 'ap-northeast-2c', 'ap-northeast-2d'];
 
-/*
-// Uncomment to use the lookup stack
-const lookupStack = new CloudhsmLookupStack(app, 'CloudhsmLookupStack', {
-    env,
-    region: env.region,
-    requiredNumberOfAZs: context.requiredAzs
-});
-
-const availableAZs = cdk.Token.asString(lookupStack.availableAZsString);
-*/
 
 // Create the CloudhsmNetworkStack
 const networkStack = new CloudHsmNetworkStack(app, 'CloudhsmNetworkStack', {
@@ -45,8 +36,6 @@ const networkStack = new CloudHsmNetworkStack(app, 'CloudhsmNetworkStack', {
   availabilityZones: availableAZs,
   maxAzs: context.requiredAzs,
 });
-
-//networkStack.node.addDependency(lookupStack);
 
 // Create the CloudhsmBaseStack
 const cloudHsmStack = new CloudhsmBaseStack(app, 'CloudhsmBaseStack', {
