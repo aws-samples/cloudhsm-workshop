@@ -2,8 +2,8 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.8
-      nodejs: 14  
+      python: 3.13
+      nodejs: 22
     commands:
       - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
       - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"

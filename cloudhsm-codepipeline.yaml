@@ -134,9 +134,9 @@ Resources:
       GroupDescription: "Security group with no ingress rule"
       VpcId: !Ref VPC
 
-  # Define the egress rule  
+  # Define the egress rule
   EgressRuleHTTP:
-    Type: AWS::EC2::SecurityGroupEgress 
+    Type: AWS::EC2::SecurityGroupEgress
     Properties:
       GroupId:
         Fn::GetAtt:
@@ -144,7 +144,7 @@ Resources:
           - GroupId
       Description: "Allow all Outbound rule"
       IpProtocol: "-1"
-      CidrIp: 0.0.0.0/0 
+      CidrIp: 0.0.0.0/0
 
 
   PipelineArtifactsBucket:
@@ -204,7 +204,7 @@ Resources:
         Version: "2012-10-17"
       PolicyName: PipelineRoleDefaultPolicy
       Roles:
-        - Ref: PipelineRole     
+        - Ref: PipelineRole
 
   PipelineDeployActionRole:
     Type: AWS::IAM::Role
@@ -217,7 +217,7 @@ Resources:
               Service: codebuild.amazonaws.com
         Version: "2012-10-17"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AdministratorAccess        
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   PipelineDeployActionRoleDefaultPolicy:
     Type: AWS::IAM::Policy
@@ -250,8 +250,8 @@ Resources:
         Version: "2012-10-17"
       PolicyName: PipelineDeployActionRoleDefaultPolicy
       Roles:
-        - Ref: PipelineDeployActionRole      
-    
+        - Ref: PipelineDeployActionRole
+
 
   PipelineDeployProject:
     Type: AWS::CodeBuild::Project
@@ -263,7 +263,7 @@ Resources:
         Image: aws/codebuild/standard:7.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: true
-        Type: LINUX_CONTAINER    
+        Type: LINUX_CONTAINER
       ServiceRole:
         Fn::GetAtt:
           - PipelineDeployActionRole
@@ -282,7 +282,7 @@ Resources:
           - Fn::GetAtt:
               - NoIngressSecurityGroup
               - GroupId
-  
+
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -336,7 +336,7 @@ Resources:
               Name: Deploy
               RunOrder: 3
           Name: NotifyPipelineRun
-      
+
       ArtifactStore:
         Location:
           Ref: PipelineArtifactsBucket
@@ -345,7 +345,7 @@ Resources:
 
   PipelineEventRule:
     Type: AWS::Events::Rule
-    Properties: 
+    Properties:
       Description: Failed Pipeline notification
       EventPattern: {
         "source": ["aws.codepipeline"],
@@ -356,7 +356,7 @@ Resources:
       }
       RoleArn: !GetAtt CodePipelineReadyFunctionRole.Arn
       State: "ENABLED"
-      Targets: 
+      Targets:
         - Arn: !GetAtt CodePipelineFailedFunction.Arn
           Id: "FailedPipeline"
 
@@ -372,15 +372,15 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: codebuild.amazonaws.com  
+              Service: codebuild.amazonaws.com
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: events.amazonaws.com                           
+              Service: events.amazonaws.com
         Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  
+
   CodePipelineReadyFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -404,7 +404,7 @@ Resources:
             http = urllib3.PoolManager()
             http.request('PUT', os.environ['SIGNAL_URL'], body=encoded_body)
 
-      Runtime: python3.12
+      Runtime: python3.13
       Timeout: 900
       Environment:
         Variables:
@@ -433,7 +433,7 @@ Resources:
 
             http = urllib3.PoolManager()
             http.request('PUT', os.environ['SIGNAL_URL'], body=encoded_body)
-      Runtime: python3.12
+      Runtime: python3.13
       Timeout: 900
       Environment:
         Variables:
@@ -448,15 +448,15 @@ Resources:
       Handle: !Ref CodePipelineWaitHandle
       Timeout: "3600"
 
-  PermissionForEventsToInvokeLambda: 
+  PermissionForEventsToInvokeLambda:
     Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
+    Properties:
+      FunctionName:
         Ref: "CodePipelineFailedFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
+      SourceArn:
+        Fn::GetAtt:
           - "PipelineEventRule"
           - "Arn"
 
@@ -474,7 +474,7 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256    
+              SSEAlgorithm: AES256
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
 
@@ -487,7 +487,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com                                    
+              Service: lambda.amazonaws.com
         Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -510,7 +510,7 @@ Resources:
         Version: "2012-10-17"
       PolicyName: SourceCodeLambdaRolePolicy
       Roles:
-        - Ref: SourceCodeLambdaRole   
+        - Ref: SourceCodeLambdaRole
 
   SourceCodeLambdaFunction:
     Type: AWS::Lambda::Function
@@ -535,7 +535,7 @@ Resources:
               print('## ENVIRONMENT VARIABLES')
               print(os.environ)
               print('## EVENT')
-              print(event)              
+              print(event)
               destinationBucket = os.environ['DESTINATION_BUCKET']
               zip_buffer = io.BytesIO()
               build_spec='''
@@ -543,8 +543,8 @@ Resources:
           phases:
             install:
               runtime-versions:
-                python: 3.12
-                nodejs: 18  
+                python: 3.13
+                nodejs: 22
               commands:
                 - git clone https://github.com/aws-samples/cloudhsm-workshop
                 - cd cloudhsm-workshop/cloudhsm-base
@@ -558,21 +558,21 @@ Resources:
                 - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
                 - cdk deploy CloudhsmBaseStack --context express="false" --require-approval=never --verbose -O out.json
           artifacts:
-            files: 'cloudhsm-workshop/cloudhsm-base/out.json'              
+            files: 'cloudhsm-workshop/cloudhsm-base/out.json'
               '''
               with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zipper:
                   file_name = 'buildspec.yaml'
                   zipper.writestr(file_name, build_spec)
-          
+
               s3_client.put_object(Bucket=destinationBucket, Key='SourceCode.zip', Body=zip_buffer.getvalue())
               responseData['Data'] = "Buidspec file created"
-              responseResult = cfnresponse.SUCCESS                
+              responseResult = cfnresponse.SUCCESS
             except Exception as e:
               responseData['Data'] = str(e)
 
-            cfnresponse.send(event, context, responseResult, responseData, "CustomResourcePhysicalID")            
-            return      
-      Runtime: python3.12
+            cfnresponse.send(event, context, responseResult, responseData, "CustomResourcePhysicalID")
+            return
+      Runtime: python3.13
       Timeout: 900
       Environment:
         Variables:
@@ -586,9 +586,9 @@ Resources:
 
 Outputs:
   SourceCodeBucket:
-    Description: Source Code Bucket 
+    Description: Source Code Bucket
     Value: !Ref PipelineSourceBucket
-  
+
   PipelineArtifactBucket:
     Description: Pipeline Artifact Bucket
     Value: !Ref PipelineArtifactsBucket
