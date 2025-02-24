@@ -14,7 +14,7 @@ const context = {
   requiredAzs: parseInt(app.node.tryGetContext('requiredAzs') || '2'),
   environment: app.node.tryGetContext('environment') || 'Development',
   project: app.node.tryGetContext('project') || 'CloudHSM-Demo',
-  region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'ap-northeast-2'
+  region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'us-east-2'
 };
 
 // Define the environment
@@ -26,7 +26,7 @@ const env = {
 // For testing, using static AZs if lookup stack is commented out
 const availableAZs = app.node
   .tryGetContext('availabilityZones')
-  ?.split(',') || ['ap-northeast-2a', 'ap-northeast-2b', 'ap-northeast-2c', 'ap-northeast-2d'];
+  ?.split(',') || ['us-east-2a', 'us-east-2b'];
 
 
 // Create the CloudhsmNetworkStack
