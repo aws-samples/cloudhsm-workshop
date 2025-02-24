@@ -720,7 +720,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
               'secretsmanager:ListSecrets',
             ],
             resources: [
-              'arn:aws:secretsmanager:*:*:secret:/cloudhsm/workshop/*',
+              `arn:aws:secretsmanager:${this.region}:${this.account}:secret:/cloudhsm/workshop/*`,
             ],
           }),
         ],
@@ -812,7 +812,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
               'secretsmanager:ListSecrets',
             ],
             resources: [
-              'arn:aws:secretsmanager:*:*:secret:/cloudhsm/workshop/*',
+              `arn:aws:secretsmanager:${this.region}:${this.account}:secret:/cloudhsm/workshop/*`,
             ],
           }),
         ],
