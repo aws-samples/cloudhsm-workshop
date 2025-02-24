@@ -11,7 +11,7 @@ export interface CloudhsmLookupStackProps extends cdk.StackProps {
 
 export class CloudhsmLookupStack extends cdk.Stack {
   public readonly availableAZsString: string;
-  public availableAZsOutput: cdk.CfnOutput;
+  public lookupAvailabilityZonesOutput: cdk.CfnOutput;
   public requiredNumberOfAZsOutput: cdk.CfnOutput;
 
   private readonly requiredNumberOfAZs: number;
@@ -27,7 +27,7 @@ export class CloudhsmLookupStack extends cdk.Stack {
 
     this.availableAZsString = azLookup.getAttString('AvailableAZs');
 
-    this.createOutputs();
+    this.createOutputs(this.availableAZsString);
   }
 
   private createAZLookupFunction(): lambda.Function {
@@ -74,12 +74,16 @@ export class CloudhsmLookupStack extends cdk.Stack {
     });
   }
 
-  private createOutputs(): void {
-    this.availableAZsOutput = new cdk.CfnOutput(this, 'AvailableAZsOutput', {
-      value: this.availableAZsString,
-      description: 'Available AZs for CloudHSM',
-      exportName: 'CloudHsmAvailableAZs',
-    });
+  private createOutputs(availableAZsString: string): void {
+    this.lookupAvailabilityZonesOutput = new cdk.CfnOutput(
+      this,
+      'LookupAvailabilityZones',
+      {
+        value: availableAZsString,
+        description: 'Actual Availability Zones used for VPC deployment',
+        exportName: 'LookupAvailabilityZones',
+      },
+    );
 
     this.requiredNumberOfAZsOutput = new cdk.CfnOutput(
       this,

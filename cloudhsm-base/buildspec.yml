@@ -13,6 +13,9 @@ phases:
   build:
     commands:
       - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
-      - cdk deploy CloudhsmBaseStack --context express="false" --require-approval=never --verbose -O out.json
+      - export CLOUDHSM_EXPRESS=false
+      - chmod +x ./scripts/get_azs.sh
+      - chmod +x ./scripts/deploy.sh
+      - ./scripts/deploy.sh
 artifacts:
   files: 'out.json'
