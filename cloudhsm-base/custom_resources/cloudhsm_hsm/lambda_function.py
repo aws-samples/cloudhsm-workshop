@@ -153,6 +153,7 @@ def onCreate(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         raise ValueError("AvailabilityZones property is missing or empty")
 
     available_azs = az_input.split(",")
+    available_azs = [az.strip() for az in available_azs]
     if not available_azs:
         raise ValueError("No valid Availability Zones provided")
 

@@ -93,8 +93,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       privateSubnets,
     );
     this.clusterIdParam = clusterCreationResult.clusterIdParam;
-    const clusterSecurityGroup = clusterCreationResult.clusterSG;
-    this.clusterSG = clusterCreationResult.clusterSG; // Add this line
+    this.clusterSG = clusterCreationResult.clusterSG;
     this.clusterId = clusterCreationResult.clusterId;
 
     // Ensure the admin instance has cluster security group
@@ -110,10 +109,10 @@ export class CloudhsmBaseStack extends cdk.Stack {
     );
 
     // 8. Initialize cluster
-    const { rsaKey, selfSignedCert, initializeCluster } =
+    const { rsaKey, selfSignedCert, initializedCluster } =
       this.initializeCluster(this.clusterId);
 
-    initializeCluster.node.addDependency(primaryNode);
+    initializedCluster.node.addDependency(primaryNode);
 
     this.rsaKey = rsaKey;
     this.selfSignedCert = selfSignedCert;
@@ -123,9 +122,11 @@ export class CloudhsmBaseStack extends cdk.Stack {
       this.activateCluster(this.adminInstance, this.clusterId, primaryNodeIp);
     this.cuPassword = cuPassword;
 
-    activatedClusterTarget.node.addDependency(primaryNode);
-    activatedClusterTarget.node.addDependency(initializeCluster);
+    activatedClusterTarget.node.addDependency(
+      this.initializeClusterProvider.onEventHandler,
+    );
     activatedClusterTarget.node.addDependency(this.adminInstance);
+    activatedClusterTarget.node.addDependency(initializedCluster);
 
     // 10. Create cluster ready gate
     this.clusterReadyGate = this.createCloudHsmReadyGate(this.clusterId);
@@ -151,7 +152,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       clientInstanceRole,
     );
 
-    this.clientInstance.addSecurityGroup(clusterSecurityGroup);
+    this.clientInstance.addSecurityGroup(this.clusterSG);
 
     this.clientInstance.node.addDependency(this.clusterReadyGate);
 
@@ -552,30 +553,28 @@ export class CloudhsmBaseStack extends cdk.Stack {
   private initializeCluster(clusterId: string): {
     rsaKey: secretsmanager.Secret;
     selfSignedCert: ssm.StringParameter;
-    initializeCluster: cdk.CustomResource;
+    initializedCluster: cdk.CustomResource;
   } {
     // Check if the RSA key already exists
     let rsaKey: secretsmanager.Secret;
-    const existingWorkShopRSAKey = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'rsaKey',
-      '/cloudhsm/workshop/rsakey',
-    );
-    if (!existingWorkShopRSAKey) {
+    try {
+      // First try to create a new secret
       rsaKey = new secretsmanager.Secret(this, 'rsaKey', {
         description:
           'RSA Key used to sign HSM certificates. This key should be stored off-site (and offline)',
         secretName: '/cloudhsm/workshop/rsakey',
       });
-    } else {
-      // Convert ISecret to Secret
-      rsaKey = secretsmanager.Secret.fromSecretAttributes(
-        this,
-        'existingRsaKey',
-        {
-          secretCompleteArn: existingWorkShopRSAKey.secretArn,
-        },
-      ) as secretsmanager.Secret;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('already exists')) {
+        // If the secret already exists, reference it
+        rsaKey = secretsmanager.Secret.fromSecretNameV2(
+          this,
+          'existingRsaKey',
+          '/cloudhsm/workshop/rsakey',
+        ) as secretsmanager.Secret;
+      } else {
+        throw error;
+      }
     }
 
     const selfSignedCert = new ssm.StringParameter(this, 'selfSignedCert', {
@@ -590,7 +589,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     selfSignedCert.grantRead(this.initializeClusterProvider.onEventHandler);
     selfSignedCert.grantWrite(this.initializeClusterProvider.onEventHandler);
 
-    const initializeCluster = new cdk.CustomResource(
+    const initializedCluster = new cdk.CustomResource(
       this,
       'initializeClusterCR',
       {
@@ -603,10 +602,10 @@ export class CloudhsmBaseStack extends cdk.Stack {
       },
     );
 
-    initializeCluster.node.addDependency(rsaKey);
-    initializeCluster.node.addDependency(selfSignedCert);
+    initializedCluster.node.addDependency(rsaKey);
+    initializedCluster.node.addDependency(selfSignedCert);
 
-    return { rsaKey, selfSignedCert, initializeCluster };
+    return { rsaKey, selfSignedCert, initializedCluster };
   }
 
   private createCloudHsmReadyGate(clusterId: string): cdk.CustomResource {
