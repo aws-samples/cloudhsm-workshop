@@ -26,8 +26,8 @@ const env = {
 // For testing, using static AZs if lookup stack is commented out
 const availableAZs = app.node
   .tryGetContext('availabilityZones')
-  ?.split(',') || ['us-east-2a', 'us-east-2b'];
-
+  ?.split(',')
+  .map((az: string) => az.trim()) || ['us-east-2a', 'us-east-2b'];
 
 // Create the CloudhsmNetworkStack
 const networkStack = new CloudHsmNetworkStack(app, 'CloudhsmNetworkStack', {
