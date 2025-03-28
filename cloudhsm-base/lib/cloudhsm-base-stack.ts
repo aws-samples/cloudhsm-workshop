@@ -1,20 +1,20 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as custom from 'aws-cdk-lib/custom-resources';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import { Asset } from 'aws-cdk-lib/aws-s3-assets';
-import * as path from 'path';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
-import cluster from 'cluster';
+import * as cdk from "aws-cdk-lib";
+import { Construct } from "constructs";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as custom from "aws-cdk-lib/custom-resources";
+import * as ssm from "aws-cdk-lib/aws-ssm";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { Asset } from "aws-cdk-lib/aws-s3-assets";
+import * as path from "path";
+import * as logs from "aws-cdk-lib/aws-logs";
+import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as targets from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 
 // Constants
-const EC2_INSTANCE_TYPE = 't3.nano';
+const EC2_INSTANCE_TYPE = "t3.medium";
+const REQUIRED_IMDSV2 = false;
 const LAMBDA_TIMEOUT = cdk.Duration.seconds(300);
 const LAMBDA_PYTHON_RUNTIME = lambda.Runtime.PYTHON_3_13;
 
@@ -84,13 +84,13 @@ export class CloudhsmBaseStack extends cdk.Stack {
       this.vpc,
       ec2InstanceSecurityGroup,
       EC2_INSTANCE_TYPE,
-      adminInstanceRole,
+      adminInstanceRole
     );
 
     // 6. Create cluster and get security group
     const clusterCreationResult = this.createCloudHsmCluster(
       this.adminInstance,
-      privateSubnets,
+      privateSubnets
     );
     this.clusterIdParam = clusterCreationResult.clusterIdParam;
     this.clusterSG = clusterCreationResult.clusterSG;
@@ -101,11 +101,11 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     // 7. Create primary HSM node
     const { ip: primaryNodeIp, node: primaryNode } = this.createCloudHsmNode(
-      'PrimaryHsmNode',
+      "PrimaryHsmNode",
       {
         ClusterId: this.clusterId,
-        AvailabilityZones: this._availabilityZones.join(','),
-      },
+        AvailabilityZones: this._availabilityZones.join(","),
+      }
     );
 
     // 8. Initialize cluster
@@ -123,7 +123,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     this.cuPassword = cuPassword;
 
     activatedClusterTarget.node.addDependency(
-      this.initializeClusterProvider.onEventHandler,
+      this.initializeClusterProvider.onEventHandler
     );
     activatedClusterTarget.node.addDependency(this.adminInstance);
     activatedClusterTarget.node.addDependency(initializedCluster);
@@ -135,11 +135,11 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     if (!this.expressMode) {
       const { ip: secondNodeIp, node: secondNode } = this.createCloudHsmNode(
-        'SecondHsmNode',
+        "SecondHsmNode",
         {
           ClusterId: this.clusterId,
-          AvailabilityZones: this._availabilityZones.reverse().join(', '),
-        },
+          AvailabilityZones: this._availabilityZones.reverse().join(", "),
+        }
       );
       secondNode.node.addDependency(this.clusterReadyGate);
     }
@@ -149,7 +149,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       this.vpc,
       ec2InstanceSecurityGroup,
       EC2_INSTANCE_TYPE,
-      clientInstanceRole,
+      clientInstanceRole
     );
 
     this.clientInstance.addSecurityGroup(this.clusterSG);
@@ -161,49 +161,49 @@ export class CloudhsmBaseStack extends cdk.Stack {
   }
 
   private createNetworkResources(): ec2.SecurityGroup {
-    const ec2InstanceSG = new ec2.SecurityGroup(this, 'ec2InstanceSG', {
+    const ec2InstanceSG = new ec2.SecurityGroup(this, "ec2InstanceSG", {
       vpc: this.vpc,
-      description: 'CloudHSM Admin Instance',
+      description: "CloudHSM Admin Instance",
       allowAllOutbound: true,
     });
 
     ec2InstanceSG.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
-      'Allow HTTPS Inbound',
+      "Allow HTTPS Inbound"
     );
     return ec2InstanceSG;
   }
 
   // Provider creation methods
   private createCloudHsmNodeProvider(): custom.Provider {
-    const cloudHsmFunction = new lambda.Function(this, 'cloudHSM2Provider', {
+    const cloudHsmFunction = new lambda.Function(this, "cloudHSM2Provider", {
       runtime: LAMBDA_PYTHON_RUNTIME,
-      code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
-      handler: 'lambda_function.handler',
+      code: lambda.Code.fromAsset("./custom_resources/cloudhsm_hsm/"),
+      handler: "lambda_function.handler",
     });
 
     this.addCloudHsmPolicies(cloudHsmFunction);
 
     const isCompleteFunction = new lambda.Function(
       this,
-      'cloudHsm2ProviderIsComplete',
+      "cloudHsm2ProviderIsComplete",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/cloudhsm_hsm/'),
-        handler: 'lambda_function.isComplete',
-      },
+        code: lambda.Code.fromAsset("./custom_resources/cloudhsm_hsm/"),
+        handler: "lambda_function.isComplete",
+      }
     );
 
     isCompleteFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudhsm:DescribeClusters', 'cloudhsm:DeleteHsm'],
-        resources: ['*'],
-      }),
+        actions: ["cloudhsm:DescribeClusters", "cloudhsm:DeleteHsm"],
+        resources: ["*"],
+      })
     );
 
-    return new custom.Provider(this, 'CloudHSM2Provider', {
+    return new custom.Provider(this, "CloudHSM2Provider", {
       onEventHandler: cloudHsmFunction,
       isCompleteHandler: isCompleteFunction,
       queryInterval: cdk.Duration.seconds(15),
@@ -213,83 +213,83 @@ export class CloudhsmBaseStack extends cdk.Stack {
   private createCloudHsmClusterProvider(): custom.Provider {
     const cloudHsmClusterFunction = new lambda.Function(
       this,
-      'cloudHSMProvider',
+      "cloudHSMProvider",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
-        handler: 'lambda_function.handler',
-      },
+        code: lambda.Code.fromAsset("./custom_resources/cloudhsm_cluster/"),
+        handler: "lambda_function.handler",
+      }
     );
 
     cloudHsmClusterFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
-          'cloudhsm:DescribeClusters',
-          'cloudhsm:DescribeBackups',
-          'cloudhsm:CreateCluster',
-          'cloudhsm:CreateHsm',
-          'cloudhsm:RestoreBackup',
-          'cloudhsm:CopyBackupToRegion',
-          'cloudhsm:InitializeCluster',
-          'cloudhsm:ListTags',
-          'cloudhsm:TagResource',
-          'cloudhsm:UntagResource',
-          'cloudhsm:DeleteCluster',
-          'cloudhsm:DeleteBackup',
-          'cloudhsm:DeleteHsm',
-          'ec2:CreateNetworkInterface',
-          'ec2:DescribeNetworkInterfaces',
-          'ec2:DescribeNetworkInterfaceAttribute',
-          'ec2:DescribeVpcEndpointServices',
-          'ec2:DetachNetworkInterface',
-          'ec2:DeleteNetworkInterface',
-          'ec2:CreateSecurityGroup',
-          'ec2:AuthorizeSecurityGroupIngress',
-          'ec2:AuthorizeSecurityGroupEgress',
-          'ec2:RevokeSecurityGroupEgress',
-          'ec2:DescribeSecurityGroups',
-          'ec2:DeleteSecurityGroup',
-          'ec2:CreateTags',
-          'ec2:DescribeVpcs',
-          'ec2:DescribeSubnets',
-          'iam:CreateServiceLinkedRole',
+          "cloudhsm:DescribeClusters",
+          "cloudhsm:DescribeBackups",
+          "cloudhsm:CreateCluster",
+          "cloudhsm:CreateHsm",
+          "cloudhsm:RestoreBackup",
+          "cloudhsm:CopyBackupToRegion",
+          "cloudhsm:InitializeCluster",
+          "cloudhsm:ListTags",
+          "cloudhsm:TagResource",
+          "cloudhsm:UntagResource",
+          "cloudhsm:DeleteCluster",
+          "cloudhsm:DeleteBackup",
+          "cloudhsm:DeleteHsm",
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeNetworkInterfaceAttribute",
+          "ec2:DescribeVpcEndpointServices",
+          "ec2:DetachNetworkInterface",
+          "ec2:DeleteNetworkInterface",
+          "ec2:CreateSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DeleteSecurityGroup",
+          "ec2:CreateTags",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "iam:CreateServiceLinkedRole",
         ],
-        resources: ['*'],
-      }),
+        resources: ["*"],
+      })
     );
 
     const cloudHsmClusterIsCompleteFunction = new lambda.Function(
       this,
-      'cloudHSMProviderIsComplete',
+      "cloudHSMProviderIsComplete",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/cloudhsm_cluster/'),
-        handler: 'lambda_function.isComplete',
-      },
+        code: lambda.Code.fromAsset("./custom_resources/cloudhsm_cluster/"),
+        handler: "lambda_function.isComplete",
+      }
     );
 
     cloudHsmClusterIsCompleteFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
-          'cloudhsm:DescribeClusters',
-          'cloudhsm:DeleteCluster',
-          'ec2:DeleteNetworkInterface',
-          'ec2:DeleteSecurityGroup',
+          "cloudhsm:DescribeClusters",
+          "cloudhsm:DeleteCluster",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DeleteSecurityGroup",
         ],
-        resources: ['*'],
-      }),
+        resources: ["*"],
+      })
     );
 
     const cloudhsmClusterProvider = new custom.Provider(
       this,
-      'cloudHSMClusterCR',
+      "cloudHSMClusterCR",
       {
         onEventHandler: cloudHsmClusterFunction,
         isCompleteHandler: cloudHsmClusterIsCompleteFunction,
         queryInterval: cdk.Duration.seconds(15),
-      },
+      }
     );
 
     return cloudhsmClusterProvider;
@@ -298,41 +298,41 @@ export class CloudhsmBaseStack extends cdk.Stack {
   private createClusterReadyProvider(): custom.Provider {
     const clusterReadyFunction = new lambda.Function(
       this,
-      'ClusterReadyFunction',
+      "ClusterReadyFunction",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
-        handler: 'lambda_function.handler',
-      },
+        code: lambda.Code.fromAsset("./custom_resources/cluster_ready_gate/"),
+        handler: "lambda_function.handler",
+      }
     );
 
     clusterReadyFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudhsm:DescribeClusters'],
-        resources: ['*'],
-      }),
+        actions: ["cloudhsm:DescribeClusters"],
+        resources: ["*"],
+      })
     );
 
     const isCompleteFunction = new lambda.Function(
       this,
-      'ClusterReadyIsCompleteFunction',
+      "ClusterReadyIsCompleteFunction",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/cluster_ready_gate/'),
-        handler: 'lambda_function.isComplete',
-      },
+        code: lambda.Code.fromAsset("./custom_resources/cluster_ready_gate/"),
+        handler: "lambda_function.isComplete",
+      }
     );
 
     isCompleteFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudhsm:DescribeClusters'],
-        resources: ['*'],
-      }),
+        actions: ["cloudhsm:DescribeClusters"],
+        resources: ["*"],
+      })
     );
 
-    return new custom.Provider(this, 'clusterReadyProviderCR', {
+    return new custom.Provider(this, "clusterReadyProviderCR", {
       onEventHandler: clusterReadyFunction,
       isCompleteHandler: isCompleteFunction,
       queryInterval: cdk.Duration.seconds(15),
@@ -342,32 +342,32 @@ export class CloudhsmBaseStack extends cdk.Stack {
   private createActivateClusterProvider(): custom.Provider {
     const activateClusterFunction = new lambda.Function(
       this,
-      'activateClusterFunction',
+      "activateClusterFunction",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
-        handler: 'lambda_function.handler',
+        code: lambda.Code.fromAsset("./custom_resources/activate_cluster"),
+        handler: "lambda_function.handler",
         architecture: lambda.Architecture.X86_64,
-      },
+      }
     );
 
     activateClusterFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['ssm:SendCommand', 'ssm:GetCommandInvocation'],
-        resources: ['*'],
-      }),
+        actions: ["ssm:SendCommand", "ssm:GetCommandInvocation"],
+        resources: ["*"],
+      })
     );
 
     const isCompleteFunction = new lambda.Function(
       this,
-      'activateClusterCompleteFunction',
+      "activateClusterCompleteFunction",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/activate_cluster'),
-        handler: 'lambda_function.isComplete',
+        code: lambda.Code.fromAsset("./custom_resources/activate_cluster"),
+        handler: "lambda_function.isComplete",
         architecture: lambda.Architecture.X86_64,
-      },
+      }
     );
 
     this.addCloudHsmPolicies(isCompleteFunction);
@@ -375,27 +375,27 @@ export class CloudhsmBaseStack extends cdk.Stack {
     isCompleteFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['cloudhsm:DescribeClusters'],
-        resources: ['*'],
-      }),
+        actions: ["cloudhsm:DescribeClusters"],
+        resources: ["*"],
+      })
     );
 
     isCompleteFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['ssm:SendCommand', 'ssm:GetCommandInvocation'],
-        resources: ['*'],
-      }),
+        actions: ["ssm:SendCommand", "ssm:GetCommandInvocation"],
+        resources: ["*"],
+      })
     );
 
     const activateClusterProvider = new custom.Provider(
       this,
-      'activateClusterProvider',
+      "activateClusterProvider",
       {
         onEventHandler: activateClusterFunction,
         isCompleteHandler: isCompleteFunction,
         queryInterval: cdk.Duration.seconds(15),
-      },
+      }
     );
 
     return activateClusterProvider;
@@ -405,11 +405,11 @@ export class CloudhsmBaseStack extends cdk.Stack {
     const SSM_PARAMETER_ARN = `arn:aws:ssm:${this.region}:${this.account}:parameter/cloudhsm/workshop/selfsignedcert`;
     const SECRET_ARN = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:/cloudhsm/workshop/*`;
 
-    const functionRole = new iam.Role(this, 'InitializeClusterFunctionRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    const functionRole = new iam.Role(this, "InitializeClusterFunctionRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AWSLambdaBasicExecutionRole',
+          "service-role/AWSLambdaBasicExecutionRole"
         ),
       ],
       inlinePolicies: {
@@ -418,10 +418,10 @@ export class CloudhsmBaseStack extends cdk.Stack {
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: [
-                'ssm:SendCommand',
-                'ssm:GetCommandInvocation',
-                'ssm:PutParameter',
-                'ssm:GetParameter',
+                "ssm:SendCommand",
+                "ssm:GetCommandInvocation",
+                "ssm:PutParameter",
+                "ssm:GetParameter",
               ],
               resources: [
                 SSM_PARAMETER_ARN,
@@ -432,16 +432,16 @@ export class CloudhsmBaseStack extends cdk.Stack {
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: [
-                'secretsmanager:PutSecretValue',
-                'secretsmanager:GetSecretValue',
-                'secretsmanager:DescribeSecret',
+                "secretsmanager:PutSecretValue",
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
               ],
               resources: [SECRET_ARN],
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
-              actions: ['cloudhsm:*'],
-              resources: ['*'],
+              actions: ["cloudhsm:*"],
+              resources: ["*"],
             }),
           ],
         }),
@@ -450,30 +450,30 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const initializeClusterFunction = new lambda.DockerImageFunction(
       this,
-      'initializeClusterDockerImage',
+      "initializeClusterDockerImage",
       {
         code: lambda.DockerImageCode.fromImageAsset(
-          './custom_resources/initialize_cluster/',
+          "./custom_resources/initialize_cluster/"
         ),
         architecture: lambda.Architecture.X86_64,
         timeout: LAMBDA_TIMEOUT,
         role: functionRole,
-      },
+      }
     );
 
     const isCompleteFunction = new lambda.Function(
       this,
-      'initializeClusterIsCompleteFunction',
+      "initializeClusterIsCompleteFunction",
       {
         runtime: LAMBDA_PYTHON_RUNTIME,
-        code: lambda.Code.fromAsset('./custom_resources/initialize_cluster/'),
-        handler: 'complete.isComplete',
+        code: lambda.Code.fromAsset("./custom_resources/initialize_cluster/"),
+        handler: "complete.isComplete",
         architecture: lambda.Architecture.X86_64,
         role: functionRole,
-      },
+      }
     );
 
-    return new custom.Provider(this, 'generateKeysProvider', {
+    return new custom.Provider(this, "generateKeysProvider", {
       onEventHandler: initializeClusterFunction,
       isCompleteHandler: isCompleteFunction,
       queryInterval: cdk.Duration.seconds(15),
@@ -482,7 +482,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
   private createCloudHsmNode(
     id: string,
-    properties: Record<string, any>,
+    properties: Record<string, any>
   ): {
     ip: string;
     node: cdk.CustomResource;
@@ -493,14 +493,14 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     return {
-      ip: cdk.Token.asString(node.getAtt('EniIp')),
+      ip: cdk.Token.asString(node.getAtt("EniIp")),
       node: node,
     };
   }
 
   private createCloudHsmCluster(
     adminInstance: ec2.Instance,
-    privateSubnets: ec2.ISubnet[],
+    privateSubnets: ec2.ISubnet[]
   ): {
     cluster: cdk.CustomResource;
     clusterId: string;
@@ -508,7 +508,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     clusterIdParam: ssm.StringParameter;
   } {
     // Create the cluster
-    const cluster = new cdk.CustomResource(this, 'cloudHSMCluster', {
+    const cluster = new cdk.CustomResource(this, "cloudHSMCluster", {
       serviceToken: this.cloudHsmClusterProvider.serviceToken,
       properties: {
         SubnetIds: privateSubnets.map((subnet) => subnet.subnetId),
@@ -516,30 +516,30 @@ export class CloudhsmBaseStack extends cdk.Stack {
     });
 
     // Get the cluster ID from the custom resource
-    const clusterId = cluster.getAttString('ClusterId');
+    const clusterId = cluster.getAttString("ClusterId");
 
     // Create the security group
     const clusterSG = ec2.SecurityGroup.fromSecurityGroupId(
       this,
-      'CloudHSMClusterSG',
-      cluster.getAttString('SecurityGroupId'),
+      "CloudHSMClusterSG",
+      cluster.getAttString("SecurityGroupId")
     );
 
     clusterSG.node.addDependency(cluster);
 
     // Create the parameter to store the cluster ID
-    const clusterIdParam = new ssm.StringParameter(this, 'clusterIdParam', {
+    const clusterIdParam = new ssm.StringParameter(this, "clusterIdParam", {
       stringValue: clusterId,
-      parameterName: '/cloudhsm/workshop/clusterId',
+      parameterName: "/cloudhsm/workshop/clusterId",
     });
 
     // Add dependencies
     clusterIdParam.node.addDependency(cluster);
 
     // Optional: Validate the security group ID matches what we expect
-    new cdk.CfnOutput(this, 'ValidateSecurityGroup', {
-      value: cluster.getAttString('SecurityGroupId'),
-      description: 'Verify this matches our created security group',
+    new cdk.CfnOutput(this, "ValidateSecurityGroup", {
+      value: cluster.getAttString("SecurityGroupId"),
+      description: "Verify this matches our created security group",
     });
 
     return {
@@ -559,28 +559,28 @@ export class CloudhsmBaseStack extends cdk.Stack {
     let rsaKey: secretsmanager.Secret;
     try {
       // First try to create a new secret
-      rsaKey = new secretsmanager.Secret(this, 'rsaKey', {
+      rsaKey = new secretsmanager.Secret(this, "rsaKey", {
         description:
-          'RSA Key used to sign HSM certificates. This key should be stored off-site (and offline)',
-        secretName: '/cloudhsm/workshop/rsakey',
+          "RSA Key used to sign HSM certificates. This key should be stored off-site (and offline)",
+        secretName: "/cloudhsm/workshop/rsakey",
       });
     } catch (error) {
-      if (error instanceof Error && error.message.includes('already exists')) {
+      if (error instanceof Error && error.message.includes("already exists")) {
         // If the secret already exists, reference it
         rsaKey = secretsmanager.Secret.fromSecretNameV2(
           this,
-          'existingRsaKey',
-          '/cloudhsm/workshop/rsakey',
+          "existingRsaKey",
+          "/cloudhsm/workshop/rsakey"
         ) as secretsmanager.Secret;
       } else {
         throw error;
       }
     }
 
-    const selfSignedCert = new ssm.StringParameter(this, 'selfSignedCert', {
-      description: 'Self Signed Certificate for root CA',
-      parameterName: '/cloudhsm/workshop/selfsignedcert',
-      stringValue: 'placeholder',
+    const selfSignedCert = new ssm.StringParameter(this, "selfSignedCert", {
+      description: "Self Signed Certificate for root CA",
+      parameterName: "/cloudhsm/workshop/selfsignedcert",
+      stringValue: "placeholder",
     });
 
     // Grant read and write permissions to the initializeClusterProvider
@@ -591,7 +591,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const initializedCluster = new cdk.CustomResource(
       this,
-      'initializeClusterCR',
+      "initializeClusterCR",
       {
         serviceToken: this.initializeClusterProvider.serviceToken,
         properties: {
@@ -599,7 +599,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
           SelfSignedCert: selfSignedCert.parameterName,
           ClusterId: clusterId,
         },
-      },
+      }
     );
 
     initializedCluster.node.addDependency(rsaKey);
@@ -610,7 +610,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
   private createCloudHsmReadyGate(clusterId: string): cdk.CustomResource {
     // Create the ready gate resource
-    const readyGate = new cdk.CustomResource(this, 'ClusterReadyGate', {
+    const readyGate = new cdk.CustomResource(this, "ClusterReadyGate", {
       serviceToken: this.clusterReadyProvider.serviceToken,
       properties: {
         ClusterId: clusterId,
@@ -623,42 +623,42 @@ export class CloudhsmBaseStack extends cdk.Stack {
   private activateCluster(
     instance: ec2.Instance,
     clusterId: string,
-    hsmNodeIp: string,
+    hsmNodeIp: string
   ): {
     coPassword: secretsmanager.Secret;
     cuPassword: secretsmanager.Secret;
     activatedClusterTarget: cdk.CustomResource;
   } {
-    const coPassword = new secretsmanager.Secret(this, 'coPassword', {
-      description: 'Crypto Officer password',
-      secretName: '/cloudhsm/workshop/copassword',
+    const coPassword = new secretsmanager.Secret(this, "coPassword", {
+      description: "Crypto Officer password",
+      secretName: "/cloudhsm/workshop/copassword",
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ type: 'CO', username: 'admin' }),
-        generateStringKey: 'password',
-        excludeCharacters: '"\';=:-',
+        secretStringTemplate: JSON.stringify({ type: "CO", username: "admin" }),
+        generateStringKey: "password",
+        excludeCharacters: "\"';=:-",
       },
     });
 
-    const cuPassword = new secretsmanager.Secret(this, 'cuPassword', {
-      description: 'Crypto User password',
-      secretName: '/cloudhsm/workshop/cupassword',
+    const cuPassword = new secretsmanager.Secret(this, "cuPassword", {
+      description: "Crypto User password",
+      secretName: "/cloudhsm/workshop/cupassword",
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          type: 'CU',
-          username: 'crypto_user',
+          type: "CU",
+          username: "crypto_user",
         }),
-        generateStringKey: 'password',
-        excludeCharacters: '"\';=:-',
+        generateStringKey: "password",
+        excludeCharacters: "\"';=:-",
       },
     });
 
-    const runDocumentLogs = new logs.LogGroup(this, 'shellscriptLogs', {
+    const runDocumentLogs = new logs.LogGroup(this, "shellscriptLogs", {
       retention: logs.RetentionDays.ONE_WEEK,
     });
 
-    const activateScriptAsset = new Asset(this, 'activateScript', {
+    const activateScriptAsset = new Asset(this, "activateScript", {
       path: path.join(
-        './custom_resources/activate_cluster/activate_cluster.sh',
+        "./custom_resources/activate_cluster/activate_cluster.sh"
       ),
     });
 
@@ -667,7 +667,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
 
     const targetActivatedCluster = new cdk.CustomResource(
       this,
-      'activateCluster',
+      "activateCluster",
       {
         serviceToken: this.activateClusterProvider.serviceToken,
         properties: {
@@ -680,7 +680,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
           LogGroupName: runDocumentLogs.logGroupName,
           ClusterId: clusterId,
         },
-      },
+      }
     );
 
     targetActivatedCluster.node.addDependency(coPassword);
@@ -694,46 +694,46 @@ export class CloudhsmBaseStack extends cdk.Stack {
   }
 
   private createAdminInstanceRole(): iam.IRole {
-    const cloudHSMPolicy = new iam.Policy(this, 'adminBaseCloudHSMPolicy', {
+    const cloudHSMPolicy = new iam.Policy(this, "adminBaseCloudHSMPolicy", {
       statements: [
         new iam.PolicyStatement({
-          actions: ['cloudhsm:DescribeClusters'],
+          actions: ["cloudhsm:DescribeClusters"],
           effect: iam.Effect.ALLOW,
-          resources: ['*'],
+          resources: ["*"],
         }),
       ],
     });
 
     const secretsManagerPolicy = new iam.Policy(
       this,
-      'adminSecretsManagerPolicy',
+      "adminSecretsManagerPolicy",
       {
         statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
-              'secretsmanager:CreateSecret',
-              'secretsmanager:DescribeSecret',
-              'secretsmanager:GetSecretValue',
-              'secretsmanager:ListSecretVersionIds',
-              'secretsmanager:ListSecrets',
+              "secretsmanager:CreateSecret",
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:ListSecretVersionIds",
+              "secretsmanager:ListSecrets",
             ],
             resources: [
               `arn:aws:secretsmanager:${this.region}:${this.account}:secret:/cloudhsm/workshop/*`,
             ],
           }),
         ],
-      },
+      }
     );
 
-    const ec2AdminRole = new iam.Role(this, 'ec2AdminRole', {
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    const ec2AdminRole = new iam.Role(this, "ec2AdminRole", {
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonSSMManagedInstanceCore',
+          "AmazonSSMManagedInstanceCore"
         ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMPatchAssociation'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMPatchAssociation"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMFullAccess"),
       ],
     });
 
@@ -744,78 +744,78 @@ export class CloudhsmBaseStack extends cdk.Stack {
   }
 
   private createClientInstanceRole(): iam.IRole {
-    const ec2clientRole = new iam.Role(this, 'ec2clientRole', {
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    const ec2clientRole = new iam.Role(this, "ec2clientRole", {
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonSSMManagedInstanceCore',
+          "AmazonSSMManagedInstanceCore"
         ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMPatchAssociation'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMPatchAssociation"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMFullAccess"),
       ],
     });
 
-    const cloudHSMPolicy = new iam.Policy(this, 'clientBaseCloudHSMPolicy', {
+    const cloudHSMPolicy = new iam.Policy(this, "clientBaseCloudHSMPolicy", {
       statements: [
         new iam.PolicyStatement({
-          actions: ['cloudhsm:DescribeClusters'],
+          actions: ["cloudhsm:DescribeClusters"],
           effect: iam.Effect.ALLOW,
-          resources: ['*'],
+          resources: ["*"],
         }),
       ],
     });
 
-    const kmsPolicy = new iam.Policy(this, 'clientKmsClientPolicy', {
-      policyName: 'BaseKMSPolicy',
+    const kmsPolicy = new iam.Policy(this, "clientKmsClientPolicy", {
+      policyName: "BaseKMSPolicy",
       statements: [
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: [
-            'kms:CreateKey',
-            'kms:CreateAlias',
-            'kms:DeleteAlias',
-            'kms:UpdateAlias',
-            'kms:DescribeKey',
-            'kms:GetParametersForImport',
-            'kms:ImportKeyMaterial',
-            'kms:DeleteImportedKeyMaterial',
-            'kms:Encrypt',
-            'kms:Decrypt',
-            'kms:EnableKey',
-            'kms:DisableKey',
-            'kms:TagResource',
-            'kms:UntagResource',
-            'kms:ListResourceTags',
-            'kms:ScheduleKeyDeletion',
-            'kms:CancelKeyDeletion',
-            'kms:ListKeys',
-            'kms:ListAliases',
+            "kms:CreateKey",
+            "kms:CreateAlias",
+            "kms:DeleteAlias",
+            "kms:UpdateAlias",
+            "kms:DescribeKey",
+            "kms:GetParametersForImport",
+            "kms:ImportKeyMaterial",
+            "kms:DeleteImportedKeyMaterial",
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:EnableKey",
+            "kms:DisableKey",
+            "kms:TagResource",
+            "kms:UntagResource",
+            "kms:ListResourceTags",
+            "kms:ScheduleKeyDeletion",
+            "kms:CancelKeyDeletion",
+            "kms:ListKeys",
+            "kms:ListAliases",
           ],
-          resources: ['*'],
+          resources: ["*"],
         }),
       ],
     });
 
     const secretsManagerPolicy = new iam.Policy(
       this,
-      'clientSecretsManagerPolicy',
+      "clientSecretsManagerPolicy",
       {
         statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
-              'secretsmanager:CreateSecret',
-              'secretsmanager:DescribeSecret',
-              'secretsmanager:GetSecretValue',
-              'secretsmanager:ListSecretVersionIds',
-              'secretsmanager:ListSecrets',
+              "secretsmanager:CreateSecret",
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:ListSecretVersionIds",
+              "secretsmanager:ListSecrets",
             ],
             resources: [
               `arn:aws:secretsmanager:${this.region}:${this.account}:secret:/cloudhsm/workshop/*`,
             ],
           }),
         ],
-      },
+      }
     );
 
     ec2clientRole.attachInlinePolicy(kmsPolicy);
@@ -829,23 +829,23 @@ export class CloudhsmBaseStack extends cdk.Stack {
     vpc: ec2.IVpc,
     instanceSG: ec2.ISecurityGroup,
     instanceType: string,
-    instanceRole: iam.IRole,
+    instanceRole: iam.IRole
   ): ec2.Instance {
     const ubuntuAMI = ec2.MachineImage.fromSsmParameter(
-      '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id',
-      { os: ec2.OperatingSystemType.LINUX },
+      "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id",
+      { os: ec2.OperatingSystemType.LINUX }
     );
 
-    const lb = new elbv2.NetworkLoadBalancer(this, 'tlsOffloadLoadBalancer', {
+    const lb = new elbv2.NetworkLoadBalancer(this, "tlsOffloadLoadBalancer", {
       vpc: this.vpc,
       internetFacing: true,
     });
 
-    const listener = lb.addListener('tlsOffloadListener', {
+    const listener = lb.addListener("tlsOffloadListener", {
       port: 443,
     });
 
-    const clientInstance = new ec2.Instance(this, 'clientInstanceUbuntu', {
+    const clientInstance = new ec2.Instance(this, "clientInstanceUbuntu", {
       instanceType: new ec2.InstanceType(instanceType),
       machineImage: ubuntuAMI,
       vpc: vpc,
@@ -854,9 +854,10 @@ export class CloudhsmBaseStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
+      requireImdsv2: REQUIRED_IMDSV2,
     });
 
-    listener.addTargets('ubuntuClientTarget', {
+    listener.addTargets("ubuntuClientTarget", {
       port: 443,
       targets: [new targets.InstanceTarget(clientInstance, 443)],
       healthCheck: {
@@ -872,7 +873,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
     vpc: ec2.IVpc,
     instanceSG: ec2.ISecurityGroup,
     instanceType: string,
-    instanceRole: iam.IRole,
+    instanceRole: iam.IRole
   ): ec2.Instance {
     const amznLinux = ec2.MachineImage.latestAmazonLinux2({
       edition: ec2.AmazonLinuxEdition.STANDARD,
@@ -881,7 +882,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       cpuType: ec2.AmazonLinuxCpuType.X86_64,
     });
 
-    const adminInstance = new ec2.Instance(this, 'adminInstance', {
+    const adminInstance = new ec2.Instance(this, "adminInstance", {
       instanceType: new ec2.InstanceType(instanceType),
       machineImage: amznLinux,
       vpc: vpc,
@@ -890,6 +891,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
+      requireImdsv2: REQUIRED_IMDSV2,
     });
 
     return adminInstance;
@@ -900,26 +902,26 @@ export class CloudhsmBaseStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
-          'cloudhsm:*',
-          'ec2:CreateNetworkInterface',
-          'ec2:DescribeNetworkInterfaces',
-          'ec2:DescribeNetworkInterfaceAttribute',
-          'ec2:DetachNetworkInterface',
-          'ec2:DeleteNetworkInterface',
-          'ec2:CreateSecurityGroup',
-          'ec2:AuthorizeSecurityGroupIngress',
-          'ec2:AuthorizeSecurityGroupEgress',
-          'ec2:RevokeSecurityGroupEgress',
-          'ec2:DescribeSecurityGroups',
-          'ec2:DeleteSecurityGroup',
-          'ec2:CreateTags',
-          'ec2:DescribeVpcs',
-          'ec2:DescribeSubnets',
-          'ec2:DescribeVpcEndpointServices',
-          'iam:CreateServiceLinkedRole',
+          "cloudhsm:*",
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeNetworkInterfaceAttribute",
+          "ec2:DetachNetworkInterface",
+          "ec2:DeleteNetworkInterface",
+          "ec2:CreateSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DeleteSecurityGroup",
+          "ec2:CreateTags",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeVpcEndpointServices",
+          "iam:CreateServiceLinkedRole",
         ],
-        resources: ['*'],
-      }),
+        resources: ["*"],
+      })
     );
   }
 
@@ -950,34 +952,34 @@ export class CloudhsmBaseStack extends cdk.Stack {
   }
 
   private createOutputs(): void {
-    new cdk.CfnOutput(this, 'ClusterSecurityGroupId', {
+    new cdk.CfnOutput(this, "ClusterSecurityGroupId", {
       value: this.clusterSG.securityGroupId,
-      description: 'CloudHSM Cluster Security Group ID',
-      exportName: 'CloudHsmClusterSecurityGroupId',
+      description: "CloudHSM Cluster Security Group ID",
+      exportName: "CloudHsmClusterSecurityGroupId",
     });
 
-    new cdk.CfnOutput(this, 'EC2InstanceSecurityGroupId', {
+    new cdk.CfnOutput(this, "EC2InstanceSecurityGroupId", {
       value: this.ec2InstanceSG.securityGroupId,
-      description: 'EC2 Instance Security Group ID',
-      exportName: 'CloudHsmEC2InstanceSecurityGroupId',
+      description: "EC2 Instance Security Group ID",
+      exportName: "CloudHsmEC2InstanceSecurityGroupId",
     });
 
-    new cdk.CfnOutput(this, 'ClusterIdParameterName', {
+    new cdk.CfnOutput(this, "ClusterIdParameterName", {
       value: this.clusterIdParam.parameterName,
-      description: 'CloudHSM Cluster ID Parameter Name',
-      exportName: 'CloudHsmClusterIdParameterName',
+      description: "CloudHSM Cluster ID Parameter Name",
+      exportName: "CloudHsmClusterIdParameterName",
     });
 
-    new cdk.CfnOutput(this, 'SelfSignedCertParameterName', {
+    new cdk.CfnOutput(this, "SelfSignedCertParameterName", {
       value: this.selfSignedCert.parameterName,
-      description: 'Self-Signed Certificate Parameter Name',
-      exportName: 'CloudHsmSelfSignedCertParameterName',
+      description: "Self-Signed Certificate Parameter Name",
+      exportName: "CloudHsmSelfSignedCertParameterName",
     });
 
-    new cdk.CfnOutput(this, 'CUPasswordSecretName', {
+    new cdk.CfnOutput(this, "CUPasswordSecretName", {
       value: this.cuPassword.secretName,
-      description: 'Crypto User Password Secret Name',
-      exportName: 'CloudHsmCUPasswordSecretName',
+      description: "Crypto User Password Secret Name",
+      exportName: "CloudHsmCUPasswordSecretName",
     });
   }
 }
