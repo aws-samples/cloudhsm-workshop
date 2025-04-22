@@ -25,6 +25,7 @@ const cloudHsmCluster = new cr.CustomResource(this, 'CloudHsmCluster', {
   properties: {
     SubnetIds: vpc.privateSubnets.map(subnet => subnet.subnetId),
     SecurityGroupId: securityGroup.securityGroupId,
+    Mode: "FIPS", // Optional: Set to "FIPS" or "NON_FIPS" (defaults to "NON_FIPS" if not specified)
   },
 });
 
@@ -46,7 +47,8 @@ cloud_hsm_cluster = CustomResource(self, "CloudHsmCluster",
     service_token=cloud_hsm_function.function_arn,
     properties={
         "SubnetIds": [subnet.subnet_id for subnet in vpc.private_subnets],
-        "SecurityGroupId": security_group.security_group_id
+        "SecurityGroupId": security_group.security_group_id,
+        "Mode": "FIPS"  # Optional: Set to "FIPS" or "NON_FIPS" (defaults to "NON_FIPS" if not specified)
     }
 )
 
@@ -61,6 +63,7 @@ cluster_state = cloud_hsm_cluster.get_att_string("State")
 |----------|------|----------|-------------|
 | SubnetIds | List[String] | Yes | List of subnet IDs where the cluster will be deployed |
 | SecurityGroupId | String | No | Security group ID for the cluster |
+| Mode | String | No | Cluster mode, can be "FIPS" or "NON_FIPS". Defaults to "NON_FIPS" |
 
 ## Output Attributes
 
@@ -76,7 +79,7 @@ cluster_state = cloud_hsm_cluster.get_att_string("State")
 
 ### Cluster Configuration
 - Instance Type: hsm2m.medium
-- Mode: NON_FIPS
+- Mode: NON_FIPS (default, can be set to FIPS using the Mode property)
 - Backup Retention: 7 days
 
 ### Security Considerations

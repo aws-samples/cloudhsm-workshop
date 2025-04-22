@@ -17,6 +17,7 @@ const EC2_INSTANCE_TYPE = "t3.medium";
 const REQUIRED_IMDSV2 = false;
 const LAMBDA_TIMEOUT = cdk.Duration.seconds(300);
 const LAMBDA_PYTHON_RUNTIME = lambda.Runtime.PYTHON_3_13;
+const CLUSTER_MODE = "FIPS"; // Required for CKS
 
 interface CloudHsmReadyGateResult {
   readyGate: cdk.CustomResource;
@@ -512,6 +513,7 @@ export class CloudhsmBaseStack extends cdk.Stack {
       serviceToken: this.cloudHsmClusterProvider.serviceToken,
       properties: {
         SubnetIds: privateSubnets.map((subnet) => subnet.subnetId),
+        Mode: CLUSTER_MODE, // Set the FIPS mode, required for CKS
       },
     });
 
