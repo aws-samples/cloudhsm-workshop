@@ -46,7 +46,7 @@ def onCreate(event, context):
         "HsmType": "hsm2m.medium",
         "SubnetIds": subnets,
         "BackupRetentionPolicy": {"Type": "DAYS", "Value": "7"},
-        "Mode": "NON_FIPS",
+        "Mode": props.get("Mode", "NON_FIPS"), # FIPS or NON_FIPS, default is NON_FIPS
     }
 
     # Add SecurityGroupId if provided
@@ -138,6 +138,7 @@ def onUpdate(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "SubnetMapping": cluster.get("SubnetMapping", {}),
                 "VpcId": cluster.get("VpcId"),
                 "LastUpdated": datetime.now(timezone.utc).isoformat(),
+                "Mode": cluster.get("Mode", "NON_FIPS"),
             },
         }
 
@@ -219,6 +220,7 @@ def isComplete(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     "SecurityGroupId": cluster.get("SecurityGroup"),
                     "State": cluster_state,
                     "CreateTimestamp": datetime.now(timezone.utc).isoformat(),
+                    "Mode": cluster.get("Mode", "NON_FIPS"),
                 },
             }
 
@@ -233,6 +235,7 @@ def isComplete(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     "SubnetMapping": cluster.get("SubnetMapping", {}),
                     "VpcId": cluster.get("VpcId"),
                     "UpdateTimestamp": datetime.now(timezone.utc).isoformat(),
+                    "Mode": cluster.get("Mode", "NON_FIPS"),
                 },
             }
 
