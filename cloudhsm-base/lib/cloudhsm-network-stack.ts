@@ -22,6 +22,11 @@ export class CloudHsmNetworkStack extends cdk.Stack {
   public publicSubnetIdsOutput: cdk.CfnOutput;
   public availabilityZonesOutput: cdk.CfnOutput;
   private _availabilityZones: string[];
+  // VPC Endpoints
+  public readonly ssmEndpoint: ec2.InterfaceVpcEndpoint;
+  public readonly ec2MessagesEndpoint: ec2.InterfaceVpcEndpoint;
+  public readonly ssmmessagesEndpoint: ec2.InterfaceVpcEndpoint;
+  public readonly s3Endpoint: ec2.GatewayVpcEndpoint;
 
   constructor(scope: Construct, id: string, props: CloudHsmNetworkStackProps) {
     super(scope, id, props);
@@ -34,6 +39,13 @@ export class CloudHsmNetworkStack extends cdk.Stack {
     this.vpc = this.createVpc(availabilityZones);
     this.privateSubnets = this.getSubnets(ec2.SubnetType.PRIVATE_WITH_EGRESS);
     this.publicSubnets = this.getSubnets(ec2.SubnetType.PUBLIC);
+
+    // Create VPC endpoints for SSM connectivity
+    const endpoints = this.createVpcEndpoints();
+    this.ssmEndpoint = endpoints.ssmEndpoint;
+    this.ec2MessagesEndpoint = endpoints.ec2MessagesEndpoint;
+    this.ssmmessagesEndpoint = endpoints.ssmmessagesEndpoint;
+    this.s3Endpoint = endpoints.s3Endpoint;
 
     this.createOutputs();
   }
@@ -61,6 +73,70 @@ export class CloudHsmNetworkStack extends cdk.Stack {
       ],
       natGateways: availabilityZones.length,
     });
+  }
+
+  private createVpcEndpoints(): {
+    ssmEndpoint: ec2.InterfaceVpcEndpoint;
+    ec2MessagesEndpoint: ec2.InterfaceVpcEndpoint;
+    ssmmessagesEndpoint: ec2.InterfaceVpcEndpoint;
+    s3Endpoint: ec2.GatewayVpcEndpoint;
+  } {
+    // Define security group for VPC endpoints
+    const endpointSecurityGroup = new ec2.SecurityGroup(this, 'EndpointSecurityGroup', {
+      vpc: this.vpc,
+      description: 'Security Group for CloudHSM VPC Endpoints',
+      allowAllOutbound: true
+    });
+
+    // Add egress rules for HTTP and HTTPS traffic that EC2 instances need for SSM
+    endpointSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      'Allow HTTPS outbound traffic for SSM'
+    );
+
+    endpointSecurityGroup.addEgressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      'Allow HTTP outbound traffic for SSM'
+    );
+    // Create VPC endpoints for SSM connectivity
+    const ssmEndpoint = new ec2.InterfaceVpcEndpoint(this, 'SSMEndpoint', {
+      vpc: this.vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SSM,
+      privateDnsEnabled: true,
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [endpointSecurityGroup]
+    });
+
+    const ec2MessagesEndpoint = new ec2.InterfaceVpcEndpoint(this, 'EC2MessagesEndpoint', {
+      vpc: this.vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
+      privateDnsEnabled: true,
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [endpointSecurityGroup]
+    });
+
+    const ssmmessagesEndpoint = new ec2.InterfaceVpcEndpoint(this, 'SSMMessagesEndpoint', {
+      vpc: this.vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+      privateDnsEnabled: true,
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [endpointSecurityGroup]
+    });
+
+    // S3 Gateway endpoint (more cost-effective than interface endpoint for S3)
+    const s3Endpoint = new ec2.GatewayVpcEndpoint(this, 'S3Endpoint', {
+      vpc: this.vpc,
+      service: ec2.GatewayVpcEndpointAwsService.S3
+    });
+
+    return {
+      ssmEndpoint,
+      ec2MessagesEndpoint,
+      ssmmessagesEndpoint,
+      s3Endpoint
+    };
   }
 
   private getSubnets(subnetType: ec2.SubnetType): ec2.ISubnet[] {
@@ -99,5 +175,30 @@ export class CloudHsmNetworkStack extends cdk.Stack {
         exportName: 'CloudHsmAvailabilityZones',
       },
     );
+
+    // Add outputs for VPC endpoints
+    new cdk.CfnOutput(this, 'SSMEndpointId', {
+      value: this.ssmEndpoint.vpcEndpointId,
+      description: 'SSM VPC Endpoint ID',
+      exportName: 'CloudHsmSSMEndpointId',
+    });
+
+    new cdk.CfnOutput(this, 'EC2MessagesEndpointId', {
+      value: this.ec2MessagesEndpoint.vpcEndpointId,
+      description: 'EC2 Messages VPC Endpoint ID',
+      exportName: 'CloudHsmEC2MessagesEndpointId',
+    });
+
+    new cdk.CfnOutput(this, 'SSMMessagesEndpointId', {
+      value: this.ssmmessagesEndpoint.vpcEndpointId,
+      description: 'SSM Messages VPC Endpoint ID',
+      exportName: 'CloudHsmSSMMessagesEndpointId',
+    });
+
+    new cdk.CfnOutput(this, 'S3EndpointId', {
+      value: this.s3Endpoint.vpcEndpointId,
+      description: 'S3 Gateway VPC Endpoint ID',
+      exportName: 'CloudHsmS3EndpointId',
+    });
   }
 }

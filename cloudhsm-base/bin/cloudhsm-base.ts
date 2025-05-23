@@ -5,8 +5,34 @@ import { CloudhsmBaseStack } from "../lib/cloudhsm-base-stack";
 import { CloudhsmLookupStack } from "../lib/cloudhsm-lookup-stack";
 import { EcsTestStack } from "../lib/cloudhsm-ecs-stack";
 import { CloudHsmNetworkStack } from "../lib/cloudhsm-network-stack";
+import { WindowsServerStack } from "../lib/windows-server-stack"
+import { WindowsSystemsManagerQuickSetupStack } from "../lib/windows-systems-manager-quicksetup-stack";
 
+
+// Create the CDK app
 const app = new cdk.App();
+
+// Extract asset bucket parameters from context
+const assetsBucketName = app.node.tryGetContext("assetsBucketName");
+let assetsBucketPrefix = app.node.tryGetContext("assetsBucketPrefix") || "";
+
+// Ensure the prefix doesn't have trailing slashes to avoid double slashes
+if (assetsBucketPrefix && assetsBucketPrefix.endsWith("/")) {
+  assetsBucketPrefix = assetsBucketPrefix.slice(0, -1);
+}
+
+// If external assets bucket is specified, log the configuration
+if (assetsBucketName) {
+  console.log(`Using external assets bucket: ${assetsBucketName}`);
+
+  if (assetsBucketPrefix) {
+    console.log(`With assets prefix: ${assetsBucketPrefix}`);
+  }
+
+  // These parameters will be available to all stacks through the context
+  // No further configuration is needed as these parameters are accessed
+  // directly by the stacks via context when needed
+}
 
 // Get context values with defaults
 const context = {
@@ -17,7 +43,16 @@ const context = {
   region:
     app.node.tryGetContext("region") ||
     process.env.CDK_DEFAULT_REGION ||
-    "ap-northeast-2",
+    "ap-northeast-1", // Default to AP region if nothing is set
+  deployWindowsServer: app.node.tryGetContext("windows") === "true" || false,
+  windowsAmiParameter: app.node.tryGetContext("windowsAmi") ||
+    "/aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base",
+  windowsInstanceType: app.node.tryGetContext("windowsInstanceType") || "c5a.xlarge",
+  // Asset bucket parameters that can be passed to override the default CDK asset bucket
+  assetsBucketName: app.node.tryGetContext("assetsBucketName"),
+  assetsBucketPrefix: app.node.tryGetContext("assetsBucketPrefix"),
+  // Key pair name for EC2 instance SSH access
+  keyPairName: app.node.tryGetContext("keyPairName"),
 };
 
 // Define the environment
@@ -26,11 +61,18 @@ const env = {
   region: context.region,
 };
 
-// For testing, using static AZs if lookup stack is commented out
+// For production use, we should utilize the get_azs.sh script to determine available AZs
+// that are compatible with CloudHSM in the current region
+// This is handled in the deploy.sh script which runs this script and passes the result via context
+// If not provided through context, use simple defaults as fallback
 const availableAZs = app.node
   .tryGetContext("availabilityZones")
   ?.split(",")
-  .map((az: string) => az.trim()) || ["ap-northeast-2a", "ap-northeast-2b"];
+  .map((az: string) => az.trim()) ||
+  // Default to region-based placeholders if no AZs are provided
+  [`${env.region}a`, `${env.region}b`];
+
+console.log(`Using availability zones: ${availableAZs.join(", ")}`);
 
 // Create the CloudhsmNetworkStack
 const networkStack = new CloudHsmNetworkStack(app, "CloudhsmNetworkStack", {
@@ -65,10 +107,68 @@ const ecsTestStack = new EcsTestStack(app, "EcsTestStack", {
 // Add dependency
 ecsTestStack.addDependency(cloudHsmStack);
 
+// Import the SsmDefaultManagementStack
+
+
+// Conditionally create the Windows Server Stack if enabled
+if (context.deployWindowsServer) {
+  // Create the Windows Systems Manager QuickSetup Stack
+  const windowsSystemsManagerQuickSetupStack = new WindowsSystemsManagerQuickSetupStack(
+    app,
+    'WindowsSystemsManagerQuickSetupStack',
+    { env },
+  );
+
+  console.log('Windows Server deployment enabled');
+
+  // Get an appropriate private subnet for Windows deployment
+  const privateSubnets = networkStack.vpc.selectSubnets({
+    subnetType: cdk.aws_ec2.SubnetType.PRIVATE_WITH_EGRESS,
+  }).subnets;
+
+  const windowsSubnetId =
+    privateSubnets.length > 0 ? privateSubnets[0].subnetId : undefined;
+
+  if (!windowsSubnetId) {
+    throw new Error('No private subnet found for Windows Server deployment');
+  }
+
+  // We now use the SsmDefaultManagementStack instead of creating the role directly
+
+  // Create the Windows Server Stack (which creates its own SSM Default Management Role)
+  const windowsServerStack = new WindowsServerStack(app, 'WindowsServerStack', {
+    env,
+    vpc: networkStack.vpc,
+    subnetId: windowsSubnetId,
+    instanceType: context.windowsInstanceType,
+    windowsAmiParameter: context.windowsAmiParameter,
+    securityGroup: cloudHsmStack.ec2InstanceSG,
+    cloudHsmClusterId: cloudHsmStack.clusterId,
+    keyPairName: context.keyPairName || 'cloudhsm-workshop-keypair', // Use the key pair name from context or a default
+    assetsBucketName: context.assetsBucketName,
+    assetsBucketPrefix: context.assetsBucketPrefix,
+    // Pass the VPC endpoints from the network stack to avoid creating duplicate endpoints
+    ssmEndpoint: networkStack.ssmEndpoint,
+    ec2MessagesEndpoint: networkStack.ec2MessagesEndpoint,
+    ssmmessagesEndpoint: networkStack.ssmmessagesEndpoint,
+    s3Endpoint: networkStack.s3Endpoint,
+  });
+
+  // Add dependencies - ensure Windows Stack depends on CloudHSM and QuickSetup
+  windowsServerStack.addDependency(cloudHsmStack);
+  windowsServerStack.addDependency(windowsSystemsManagerQuickSetupStack);
+
+  // Add Windows stack-specific tags
+  cdk.Tags.of(windowsServerStack).add('Stack', 'WindowsServer', {
+    includeResourceTypes: ['*'],
+  });
+}
+
 // Add tags to all stacks
 const tags = {
   Environment: context.environment.replace(/[^a-zA-Z0-9_.:/=+\-@\s]/g, ""),
   Project: context.project.replace(/[^a-zA-Z0-9_.:/=+\-@\s]/g, ""),
+  WindowsEnabled: context.deployWindowsServer.toString(),
 };
 
 // Add stack-specific tags

@@ -173,6 +173,20 @@ export class CloudhsmBaseStack extends cdk.Stack {
       ec2.Port.tcp(443),
       "Allow HTTPS Inbound"
     );
+
+    // Add ports for SSM Session Manager access
+    ec2InstanceSG.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(22),
+      "Allow SSH for SSM Session Manager"
+    );
+
+    ec2InstanceSG.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(3389),
+      "Allow RDP for SSM Session Manager and direct access"
+    );
+
     return ec2InstanceSG;
   }
 
