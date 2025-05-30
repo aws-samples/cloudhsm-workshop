@@ -2,9 +2,6 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$ClusterId,
 
-    [Parameter(Mandatory=$true)]
-    [string]$BootstrapScriptUrl,
-
     [Parameter(Mandatory=$false)]
     [string]$Region = "eu-north-1",
 
@@ -13,9 +10,6 @@ param(
 
     [Parameter(Mandatory=$false)]
     [string]$ClusterCertPath = "",
-
-    [Parameter(Mandatory=$false)]
-    [hashtable]$ScriptsUrls = @{},
 
     [Parameter(Mandatory=$false)]
     [int]$MaxRetries = 3,
@@ -35,14 +29,6 @@ try {
     Write-Host "Error details: $_"
 }
 
-# Set TLS 1.2 for all HTTPS communications
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Write-Host "Set TLS 1.2 for secure communications"
-} catch {
-    Write-Host "Warning: Could not set TLS 1.2. HTTPS downloads might fail."
-}
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"  # Disable progress bars for faster downloads
@@ -53,7 +39,6 @@ Start-Transcript -Path "C:\CloudHSM\bootstrap-transcript.log" -Append
 Write-Host "Starting CloudHSM Windows bootstrap script"
 Write-Host "ClusterId: $ClusterId"
 Write-Host "Region: $Region"
-Write-Host "BootstrapScriptUrl: $BootstrapScriptUrl"
 
 # Create working directories
 $workDir = "C:\CloudHSM"

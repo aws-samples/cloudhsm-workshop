@@ -73,6 +73,11 @@ export class WindowsServerStack extends cdk.Stack {
                 keyPairName: `cloudhsm-workshop-keypair-${this.region}-${this.account}`,
             });
             props.keyPairName = this.createdKeyPair.keyPairName;
+            new cdk.CfnOutput(this, 'PrivateKey', {
+                value: this.createdKeyPair.privateKey.parameterName,
+                description:
+                    'The name of the parameter holding the private key used to connect to the Windows Server instance.',
+            });
         }
 
         // Create a VPC endpoint waiter within this stack to ensure endpoints are fully available before the instance is created
@@ -140,12 +145,6 @@ export class WindowsServerStack extends cdk.Stack {
         // Use the provided SSM parameter for the AMI name
         const ami = MachineImage.fromSsmParameter(props.windowsAmiParameter);
 
-        // Create assets for scripts - this packages and uploads them to S3 automatically
-        const bootstrapScriptAsset = new Asset(this, 'BootstrapScriptAsset', {
-            path: path.join(__dirname, '..', 'scripts', 'windows', 'bootstrap.ps1'),
-            // Add a display name for easier identification
-        });
-
         // Add additional script assets as needed
         const assetsDirectory = path.join(__dirname, '..', 'scripts', 'windows');
         const additionalScripts = [
@@ -153,89 +152,24 @@ export class WindowsServerStack extends cdk.Stack {
             'check-status.ps1',
             'install-dependencies.ps1',
             'install-prerequisites.ps1',
-            'install-signtool.ps1',
+            //            'install-signtool.ps1',
             'setup-cloudhsm.ps1',
         ];
-
-        // Create assets for each additional script
-        const additionalScriptAssets = additionalScripts.map(
-            (scriptName) =>
-                new Asset(this, `Asset-${scriptName.replace('.', '-')}`, {
-                    path: path.join(assetsDirectory, scriptName),
-                }),
-        );
-
-        // Explicitly grant read permissions to the instance role for all assets
-        bootstrapScriptAsset.grantRead(windowsInstanceRole);
-        additionalScriptAssets.forEach((asset) => asset.grantRead(windowsInstanceRole));
-
-        // Extract and expose the S3 bucket and key information from the assets
-        const assetBucketName = props.assetsBucketName || bootstrapScriptAsset.s3BucketName;
-        const assetObjectKey = bootstrapScriptAsset.s3ObjectKey;
-        const assetBucketPrefix = props.assetsBucketPrefix || assetObjectKey.split('/')[0]; // Get the prefix part
-
-        // Output the CDK Assets information for reference
-        new cdk.CfnOutput(this, 'AssetsBucketName', {
-            value: assetBucketName,
-            description: props.assetsBucketName
-                ? 'External Workshop Assets S3 bucket'
-                : 'CDK Assets S3 bucket containing CloudHSM scripts',
-        });
-
-        new cdk.CfnOutput(this, 'AssetsBucketPrefix', {
-            value: assetBucketPrefix,
-            description: props.assetsBucketPrefix
-                ? 'External Workshop Assets prefix'
-                : 'CDK Assets prefix/key for CloudHSM scripts',
-        });
-
-        // Store the bucket and key info for use elsewhere if needed
-        if (props.assetsBucketName !== undefined) {
-            // This is a bit of a hack, but allows outside access to the actual bucket name
-            (props as any).actualAssetsBucketName = assetBucketName;
-        }
-        if (props.assetsBucketPrefix !== undefined) {
-            // This is a bit of a hack, but allows outside access to the actual prefix
-            (props as any).actualAssetsBucketPrefix = assetBucketPrefix;
-        }
 
         // Get deployment version from context or use current timestamp
         const deploymentVersion = this.node.tryGetContext('deploymentVersion') || new Date().toISOString();
 
         let scriptContent = '';
-        // Create a template object with all parameters for script.ps1
-        // Use custom assets bucket URL if provided, otherwise use CDK asset URL
-        let bootstrapScriptUrl = bootstrapScriptAsset.s3ObjectUrl;
-
-        // If external assets bucket is provided, use it for bootstrap script
-        if (props.assetsBucketName && props.assetsBucketPrefix) {
-            // Always use the standard path format with direct context values plus scripts/windows path
-            // Ensure there's a trailing slash in the prefix
-            const formattedPrefix = props.assetsBucketPrefix.endsWith('/')
-                ? props.assetsBucketPrefix
-                : `${props.assetsBucketPrefix}/`;
-            bootstrapScriptUrl = `s3://${props.assetsBucketName}/${formattedPrefix}scripts/windows/bootstrap.ps1`;
-            console.log(`Using workshop assets for bootstrap script: ${bootstrapScriptUrl}`);
-        }
 
         // Create script parameters
         const scriptParams = {
-            bootstrapScriptS3Url: bootstrapScriptUrl,
             cloudHsmClusterId: props.cloudHsmClusterId,
             region: this.region || cdk.Stack.of(this).region,
             // Map of script names to their URLs
-            scriptS3Urls: Object.fromEntries(
-                additionalScripts.map((script, idx) => {
+            scriptGithubUrls: Object.fromEntries(
+                additionalScripts.map((script) => {
                     // For additional scripts, we could also use the external bucket if specified
-                    if (props.assetsBucketName && props.assetsBucketPrefix) {
-                        // Always use the standard path format with direct context values
-                        // Ensure there's a trailing slash in the prefix
-                        const formattedPrefix = props.assetsBucketPrefix.endsWith('/')
-                            ? props.assetsBucketPrefix
-                            : `${props.assetsBucketPrefix}/`;
-                        return [script, `s3://${props.assetsBucketName}/${formattedPrefix}scripts/windows/${script}`];
-                    }
-                    return [script, additionalScriptAssets[idx].s3ObjectUrl];
+                    return [script, `${githubUrlRawPath}cloudhsm-base/scripts/windows/${script}`];
                 }),
             ),
             customerCaCertPath: `/cloudhsm/${props.cloudHsmClusterId}/customer-ca-cert`,
@@ -244,10 +178,8 @@ export class WindowsServerStack extends cdk.Stack {
 
         // Add debug output to see all script URLs
         new cdk.CfnOutput(this, 'BootstrapScriptUrl', {
-            value: scriptParams.bootstrapScriptS3Url,
-            description: props.assetsBucketName
-                ? 'S3 URL for bootstrap script (using external workshop assets bucket)'
-                : 'S3 URL for bootstrap script (using CDK assets bucket)',
+            value: scriptParams.scriptGithubUrls.toString(),
+            description: 'URL for bootstrap script (using external workshop assets bucket)',
         });
 
         // Create script content using template interpolation
@@ -340,96 +272,19 @@ function Initialize-AWS {
 
 # Function definitions removed - VPC endpoint waiting is now handled by the custom resource
 
-function Download-S3File {
-    param(
-        [Parameter(Mandatory=$true)][string]$Url,
-        [Parameter(Mandatory=$true)][string]$OutputPath,
-        [Parameter(Mandatory=$false)][string]$Region,
-        [Parameter(Mandatory=$false)][int]$MaxRetries = 3
-    )
-
-    # Parse the URL to get bucket and key
-    try {
-        if ($Url -like "s3://*") {
-            # Parse s3:// URL format
-            $uri = [System.Uri]$Url
-            $bucketName = $uri.Host
-            $key = $uri.AbsolutePath.TrimStart('/')
-            Write-Host "Parsed S3 URL - Bucket: $bucketName, Key: $key"
-        }
-        else {
-            throw "URL is not in s3:// format: $Url"
-        }
-    }
-    catch {
-        Write-Host "Error parsing S3 URL: $_"
-        return $false
-    }
-
-    # Try to download using AWS PowerShell cmdlets
-    $retryCount = 0
-    $success = $false
-
-    while (-not $success -and $retryCount -lt $MaxRetries) {
-        $retryCount++
-
-        try {
-            Write-Host "Downloading S3 object (attempt $retryCount)..."
-            Read-S3Object -BucketName $bucketName -Key $key -File $OutputPath -Region $Region
-
-            # Fix the Test-Path syntax - separate into two conditions
-            if (Test-Path $OutputPath) {
-                $fileInfo = Get-Item $OutputPath
-                if ($fileInfo.Length -gt 0) {
-                    $success = $true
-                    Write-Host "Successfully downloaded S3 object"
-                    return $true
-                }
-                else {
-                    Write-Host "Downloaded file exists but is empty"
-                }
-            }
-            else {
-                Write-Host "Downloaded file is missing"
-            }
-        }
-        catch {
-            Write-Host "Download attempt $retryCount failed: $_"
-
-            if ($retryCount -lt $MaxRetries) {
-                $sleepTime = 2 * $retryCount
-                Write-Host "Retrying in $sleepTime seconds..."
-                Start-Sleep -Seconds $sleepTime
-            }
-        }
-    }
-
-    Write-Host "Failed to download S3 object after $MaxRetries attempts"
-    return $false
-}
-
 Write-Host "Initializing AWS credentials using IMDSv2"
 $awsInfo = Initialize-AWS
 $region = $awsInfo.Region
 Write-Host "AWS initialization complete. Region: $region"
 
-$bootstrapLocalPath = "C:\\CloudHSM\\bootstrap.ps1"
-$bootstrapS3Url = "${scriptParams.bootstrapScriptS3Url}"
-Write-Host "Downloading bootstrap script from $bootstrapS3Url"
-
-$downloadOk = Download-S3File -Url $bootstrapS3Url -OutputPath $bootstrapLocalPath -Region $region
-if (-not $downloadOk) {
-    throw "Failed to download bootstrap script after multiple attempts"
-}
-
 # Download all additional scripts to a common location
 Write-Host "Pre-downloading additional scripts..."
-$scriptsDir = "C:\\CloudHSM\\scripts"
+$scriptsDir = "C:\\CloudHSM"
 New-Item -Path $scriptsDir -ItemType Directory -Force | Out-Null
 
 # Clone the scriptUrls hashtable to avoid modifying the original
 $scriptsToDownload = @{
-${Object.entries(scriptParams.scriptS3Urls)
+${Object.entries(scriptParams.scriptGithubUrls)
     .map(([script, url]) => `    "${script}" = "${url}"`)
     .join('\n')}
 }
@@ -440,15 +295,12 @@ foreach ($scriptName in $scriptsToDownload.Keys) {
     $scriptPath = Join-Path $scriptsDir $scriptName
 
     Write-Host "Downloading $scriptName from $scriptUrl"
-    $scriptOk = Download-S3File -Url $scriptUrl -OutputPath $scriptPath -Region $region
+    $downloadScriptOk = Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath
 
-    if (-not $scriptOk) {
-        Write-Host "Warning: Failed to pre-download $scriptName" -ForegroundColor Yellow
+    if (-not $downloadScriptOk) {
+        Write-Host "Warning: Failed to download $scriptName" -ForegroundColor Yellow
     } else {
         Write-Host "Successfully downloaded $scriptName" -ForegroundColor Green
-
-        # Also copy to base directory where bootstrap.ps1 might look for it
-        Copy-Item -Path $scriptPath -Destination "C:\\CloudHSM\\$scriptName" -Force
     }
 }
 
@@ -457,19 +309,12 @@ $bootstrapParams = @{
     # Required parameters
     "ClusterId" = "${scriptParams.cloudHsmClusterId}"
 
-    # This parameter name is misleading but required by bootstrap.ps1
-    # It expects a directory or URL prefix where scripts can be found
-    "BootstrapScriptUrl" = "C:\\CloudHSM\\scripts"
-
     # Region for AWS operations
     "Region" = "${scriptParams.region}"
 
     # SSM parameter paths for certificates
     "CustomerCaCertPath" = "${scriptParams.customerCaCertPath}"
     "ClusterCertPath" = "${scriptParams.clusterCertPath}"
-
-    # Pass dictionary of script URLs as fallback
-    "ScriptsUrls" = $scriptsToDownload
 
     # Control settings
     "MaxRetries" = 5
