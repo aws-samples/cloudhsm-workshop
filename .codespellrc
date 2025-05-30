@@ -1,0 +1,2 @@
+[codespell]
+skip = docs/*, **/package-lock.json
