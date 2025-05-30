@@ -36,8 +36,15 @@ export interface WindowsServerStackProps extends cdk.StackProps {
     ssmEndpoint: InterfaceVpcEndpoint;
     ec2MessagesEndpoint: InterfaceVpcEndpoint;
     ssmmessagesEndpoint: InterfaceVpcEndpoint;
+    cloudHSMEndpoint: InterfaceVpcEndpoint;
     s3Endpoint: GatewayVpcEndpoint;
     githubRepositoryUrPath: string;
+    selfSignedCert: StringParameter;
+    initializedCluster: StringParameter;
+    cuCredentials: Secret;
+    coCredentials: Secret;
+    clusterIdParam: StringParameter;
+    endpointSecurityGroup: SecurityGroup;
 }
 
 export class WindowsServerStack extends cdk.Stack {
@@ -47,6 +54,7 @@ export class WindowsServerStack extends cdk.Stack {
     public readonly ssmEndpoint: InterfaceVpcEndpoint;
     public readonly ec2MessagesEndpoint: InterfaceVpcEndpoint;
     public readonly ssmmessagesEndpoint: InterfaceVpcEndpoint;
+    public readonly cloudHSMEndpoint: InterfaceVpcEndpoint;
     public readonly s3Endpoint: GatewayVpcEndpoint;
     public readonly createdKeyPair?: KeyPair;
 
@@ -61,6 +69,7 @@ export class WindowsServerStack extends cdk.Stack {
         this.ec2MessagesEndpoint = props.ec2MessagesEndpoint;
         this.ssmmessagesEndpoint = props.ssmmessagesEndpoint;
         this.s3Endpoint = props.s3Endpoint;
+        this.cloudHSMEndpoint = props.cloudHSMEndpoint;
 
         const githubUrlRawPath = `https://raw.githubusercontent.com/${props.githubRepositoryUrPath}`;
 
@@ -84,7 +93,13 @@ export class WindowsServerStack extends cdk.Stack {
         // The waiter uses a custom resource that checks if endpoints are in 'available' state
         // and verifies that DNS resolution and TCP connectivity work for the endpoint services
         const vpcEndpointWaiter = new VpcEndpointWaiter(this, 'VpcEndpointWaiter', {
-            endpoints: [this.ssmEndpoint, this.ec2MessagesEndpoint, this.ssmmessagesEndpoint, this.s3Endpoint],
+            endpoints: [
+                this.ssmEndpoint,
+                this.ec2MessagesEndpoint,
+                this.ssmmessagesEndpoint,
+                this.s3Endpoint,
+                this.cloudHSMEndpoint,
+            ],
             vpc: props.vpc,
             region: this.region || cdk.Stack.of(this).region,
             timeoutSeconds: 900, // 15 minutes timeout
@@ -99,6 +114,22 @@ export class WindowsServerStack extends cdk.Stack {
                 // Adding additional SSM policies to ensure proper registration
                 cdk.aws_iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMPatchAssociation'),
             ],
+        });
+
+        props.clusterIdParam.grantRead(windowsInstanceRole);
+        props.coCredentials.grantRead(windowsInstanceRole);
+        props.cuCredentials.grantRead(windowsInstanceRole);
+        props.selfSignedCert.grantRead(windowsInstanceRole);
+
+        new iam.Policy(this, 'windowsClientCloudHSMPolicy', {
+            statements: [
+                new iam.PolicyStatement({
+                    actions: ['cloudhsm:DescribeClusters', 'cloudhsm:ListTags'],
+                    effect: iam.Effect.ALLOW,
+                    resources: ['*'], // TODO: Restrict to a single cluster here
+                }),
+            ],
+            roles: [windowsInstanceRole],
         });
 
         // Add permissions for SSM agent to register with SSM service and for Fleet Manager functionality
@@ -120,21 +151,6 @@ export class WindowsServerStack extends cdk.Stack {
             }),
         );
 
-        // Add explicit permissions for CloudHSM parameter access and Secrets Manager
-        windowsInstanceRole.addToPolicy(
-            new iam.PolicyStatement({
-                actions: [
-                    // Only need Secret Manager access for crypto-user, as confirmed by user
-                    'secretsmanager:GetSecretValue',
-                ],
-                resources: [
-                    // Focus only on crypto-user secret
-                    `arn:aws:secretsmanager:${this.region}:${this.account}:secret:cloudhsm/${props.cloudHsmClusterId}/crypto-user*`,
-                ],
-                effect: iam.Effect.ALLOW,
-            }),
-        );
-
         // Explicitly create the CloudWatch Log Group
         const logGroup = new LogGroup(this, 'CloudHsmWorkshopLogGroup', {
             logGroupName: '/ec2/windows/cloudhsm-workshop',
@@ -146,7 +162,6 @@ export class WindowsServerStack extends cdk.Stack {
         const ami = MachineImage.fromSsmParameter(props.windowsAmiParameter);
 
         // Add additional script assets as needed
-        const assetsDirectory = path.join(__dirname, '..', 'scripts', 'windows');
         const additionalScripts = [
             'CloudHSM-Utils.psm1',
             'check-status.ps1',
@@ -356,8 +371,12 @@ try {
         // The CDK will handle the base64 encoding and CloudFormation formatting
         const userData = UserData.custom(`<powershell>${scriptContent}</powershell>`);
 
-        // Ensure the security group allows all outbound traffic
-        props.securityGroup.addEgressRule(Peer.anyIpv4(), Port.allTraffic(), 'Allow all outbound traffic');
+        // TODO: Use VPCe for Linux stack also, move all networking to the networking stack.
+        props.securityGroup.connections.allowTo(
+            props.endpointSecurityGroup,
+            Port.tcp(443),
+            'Allow VPC endpoint access',
+        );
 
         // EC2 Instance
         const instance = new Instance(this, 'WinServer', {

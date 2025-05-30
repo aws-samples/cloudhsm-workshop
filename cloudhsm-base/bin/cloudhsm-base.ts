@@ -101,7 +101,7 @@ const ecsTestStack = new EcsTestStack(app, 'EcsTestStack', {
     ec2InstanceSG: cloudHsmStack.ec2InstanceSG,
     clusterIdParam: cloudHsmStack.clusterIdParam,
     selfSignedCert: cloudHsmStack.selfSignedCert,
-    cuPassword: cloudHsmStack.cuPassword,
+    cuPassword: cloudHsmStack.cuCredentials,
 });
 
 // Add dependency
@@ -149,8 +149,15 @@ if (context.deployWindowsServer) {
         ssmEndpoint: networkStack.ssmEndpoint,
         ec2MessagesEndpoint: networkStack.ec2MessagesEndpoint,
         ssmmessagesEndpoint: networkStack.ssmmessagesEndpoint,
+        cloudHSMEndpoint: networkStack.cloudHSMEndpoint,
         s3Endpoint: networkStack.s3Endpoint,
         githubRepositoryUrPath: context.githubUrlPath,
+        cuCredentials: cloudHsmStack.cuCredentials,
+        coCredentials: cloudHsmStack.coCredentials,
+        selfSignedCert: cloudHsmStack.selfSignedCert,
+        initializedCluster: cloudHsmStack.selfSignedCert,
+        clusterIdParam: cloudHsmStack.clusterIdParam,
+        endpointSecurityGroup: networkStack.endpointSecurityGroup,
     });
 
     // Add dependencies - ensure Windows Stack depends on CloudHSM and QuickSetup
