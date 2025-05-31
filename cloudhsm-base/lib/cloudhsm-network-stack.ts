@@ -139,7 +139,7 @@ export class CloudHsmNetworkStack extends cdk.Stack {
 
         const cloudHSMEndpoint = new ec2.InterfaceVpcEndpoint(this, 'CloudHSMEndpoint', {
             vpc: this.vpc,
-            service: new ec2.InterfaceVpcEndpointAwsService('cloudhsm'),
+            service: new ec2.InterfaceVpcEndpointAwsService('cloudhsmv2'),
             privateDnsEnabled: true,
             subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
             securityGroups: [endpointSecurityGroup],
