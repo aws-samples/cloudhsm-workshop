@@ -142,12 +142,15 @@ fi
 
 echo "Using availability zones: ${AZS_CSV}"
 
+set +x
+
 cdk deploy --all \
   --context express=true \
   --context availabilityZones="${AZS_CSV}" \
   --context assetsBucketName="${ASSETS_BUCKET_NAME}" \
   --context assetsBucketPrefix="${ASSETS_BUCKET_PREFIX}" \
   --context windows=true \
+  --context githubUrlPath="aws-samples/cloudhsm-workshop/refs/heads/staging/" \
   --context keyPairName="${keyPairName}" \
   --region="${AWS_REGION}" \
   --require-approval never \

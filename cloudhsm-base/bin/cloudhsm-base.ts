@@ -50,7 +50,7 @@ const context = {
     assetsBucketPrefix: app.node.tryGetContext('assetsBucketPrefix'),
     // Key pair name for EC2 instance SSH access
     keyPairName: app.node.tryGetContext('keyPairName'),
-    githubUrlPath: app.node.tryGetContext('githubUrlPath') || 'aws-samples/cloudhsm-workshop/refs/heads/main',
+    githubUrlPath: app.node.tryGetContext('githubUrlPath') || 'aws-samples/cloudhsm-workshop/refs/heads/main/',
 };
 
 // Define the environment
