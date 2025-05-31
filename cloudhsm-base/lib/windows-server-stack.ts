@@ -192,9 +192,9 @@ export class WindowsServerStack extends cdk.Stack {
         };
 
         // Add debug output to see all script URLs
-        new cdk.CfnOutput(this, 'BootstrapScriptUrl', {
-            value: scriptParams.scriptGithubUrls.toString(),
-            description: 'URL for bootstrap script (using external workshop assets bucket)',
+        new cdk.CfnOutput(this, 'BootstrapScriptParameters', {
+            value: JSON.stringify(scriptParams),
+            description: 'URL for bootstrap script',
         });
 
         // Create script content using template interpolation
@@ -310,7 +310,7 @@ foreach ($scriptName in $scriptsToDownload.Keys) {
     $scriptPath = Join-Path $scriptsDir $scriptName
 
     Write-Host "Downloading $scriptName from $scriptUrl"
-    $downloadScriptOk = Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath
+    $downloadScriptOk = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing -OutFile $scriptPath
 
     if (-not $downloadScriptOk) {
         Write-Host "Warning: Failed to download $scriptName" -ForegroundColor Yellow
