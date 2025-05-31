@@ -169,6 +169,7 @@ export class WindowsServerStack extends cdk.Stack {
             'install-prerequisites.ps1',
             //            'install-signtool.ps1',
             'setup-cloudhsm.ps1',
+            'bootstrap.ps1',
         ];
 
         // Get deployment version from context or use current timestamp
@@ -310,12 +311,12 @@ foreach ($scriptName in $scriptsToDownload.Keys) {
     $scriptPath = Join-Path $scriptsDir $scriptName
 
     Write-Host "Downloading $scriptName from $scriptUrl"
-    $downloadScriptOk = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing -OutFile $scriptPath
+    Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing -OutFile $scriptPath
 
-    if (-not $downloadScriptOk) {
-        Write-Host "Warning: Failed to download $scriptName" -ForegroundColor Yellow
-    } else {
+    if (Test-Path $scriptPath) {
         Write-Host "Successfully downloaded $scriptName" -ForegroundColor Green
+    } else {
+        Write-Host "Warning: Failed to download $scriptName" -ForegroundColor Yellow
     }
 }
 
@@ -340,6 +341,7 @@ Write-Host "Running bootstrap script..."
 $startTime = Get-Date
 
 try {
+    $bootstrapLocalPath = Join-Path $scriptsDir "bootstrap.ps1"
     & $bootstrapLocalPath @bootstrapParams *> "C:\\CloudHSM\\bootstrap-execution.log"
     $exitCode = $LASTEXITCODE
 
