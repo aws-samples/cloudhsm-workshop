@@ -146,18 +146,18 @@ if (context.deployWindowsServer) {
         assetsBucketName: context.assetsBucketName,
         assetsBucketPrefix: context.assetsBucketPrefix,
         // Pass the VPC endpoints from the network stack to avoid creating duplicate endpoints
-        ssmEndpoint: networkStack.ssmEndpoint,
-        ec2MessagesEndpoint: networkStack.ec2MessagesEndpoint,
-        ssmmessagesEndpoint: networkStack.ssmmessagesEndpoint,
-        cloudHSMEndpoint: networkStack.cloudHSMEndpoint,
-        s3Endpoint: networkStack.s3Endpoint,
+        // ssmEndpoint: networkStack.ssmEndpoint,
+        // ec2MessagesEndpoint: networkStack.ec2MessagesEndpoint,
+        // ssmmessagesEndpoint: networkStack.ssmmessagesEndpoint,
+        // cloudHSMEndpoint: networkStack.cloudHSMEndpoint,
+        //s3Endpoint: networkStack.s3Endpoint,
         githubRepositoryUrPath: context.githubUrlPath,
         cuCredentials: cloudHsmStack.cuCredentials,
         coCredentials: cloudHsmStack.coCredentials,
         selfSignedCert: cloudHsmStack.selfSignedCert,
         initializedCluster: cloudHsmStack.selfSignedCert,
         clusterIdParam: cloudHsmStack.clusterIdParam,
-        endpointSecurityGroup: networkStack.endpointSecurityGroup,
+        //endpointSecurityGroup: networkStack.endpointSecurityGroup,
     });
 
     // Add dependencies - ensure Windows Stack depends on CloudHSM and QuickSetup

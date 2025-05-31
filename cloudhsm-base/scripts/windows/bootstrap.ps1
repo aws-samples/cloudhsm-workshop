@@ -89,6 +89,9 @@ function Invoke-ScriptWithRetry {
     return $success
 }
 
+# Update NuGet
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+
 # Import utilities module if available
 if (Test-Path "$workDir\CloudHSM-Utils.psm1") {
     try {

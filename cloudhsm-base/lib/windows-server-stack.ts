@@ -12,6 +12,8 @@ import {
     Peer,
     Port,
     KeyPair,
+    Subnet,
+    SubnetType,
 } from 'aws-cdk-lib/aws-ec2';
 import { VpcEndpointWaiter } from './vpc-endpoint-waiter';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -33,29 +35,29 @@ export interface WindowsServerStackProps extends cdk.StackProps {
     assetsBucketName?: string;
     assetsBucketPrefix?: string;
     // Add VPC endpoint references from the network stack
-    ssmEndpoint: InterfaceVpcEndpoint;
-    ec2MessagesEndpoint: InterfaceVpcEndpoint;
-    ssmmessagesEndpoint: InterfaceVpcEndpoint;
-    cloudHSMEndpoint: InterfaceVpcEndpoint;
-    s3Endpoint: GatewayVpcEndpoint;
+    // ssmEndpoint: InterfaceVpcEndpoint;
+    // ec2MessagesEndpoint: InterfaceVpcEndpoint;
+    // ssmmessagesEndpoint: InterfaceVpcEndpoint;
+    // cloudHSMEndpoint: InterfaceVpcEndpoint;
+    // s3Endpoint: GatewayVpcEndpoint;
     githubRepositoryUrPath: string;
     selfSignedCert: StringParameter;
     initializedCluster: StringParameter;
     cuCredentials: Secret;
     coCredentials: Secret;
     clusterIdParam: StringParameter;
-    endpointSecurityGroup: SecurityGroup;
+    //endpointSecurityGroup: SecurityGroup;
 }
 
 export class WindowsServerStack extends cdk.Stack {
     public readonly instance: Instance;
 
     // VPC Endpoints
-    public readonly ssmEndpoint: InterfaceVpcEndpoint;
-    public readonly ec2MessagesEndpoint: InterfaceVpcEndpoint;
-    public readonly ssmmessagesEndpoint: InterfaceVpcEndpoint;
-    public readonly cloudHSMEndpoint: InterfaceVpcEndpoint;
-    public readonly s3Endpoint: GatewayVpcEndpoint;
+    // public readonly ssmEndpoint: InterfaceVpcEndpoint;
+    // public readonly ec2MessagesEndpoint: InterfaceVpcEndpoint;
+    // public readonly ssmmessagesEndpoint: InterfaceVpcEndpoint;
+    // public readonly cloudHSMEndpoint: InterfaceVpcEndpoint;
+    // public readonly s3Endpoint: GatewayVpcEndpoint;
     public readonly createdKeyPair?: KeyPair;
 
     constructor(scope: Construct, id: string, props: WindowsServerStackProps) {
@@ -65,11 +67,11 @@ export class WindowsServerStack extends cdk.Stack {
         // It's now handled by the WindowsSystemsManagerQuickSetupStack
 
         // Use the VPC endpoints passed from the network stack
-        this.ssmEndpoint = props.ssmEndpoint;
-        this.ec2MessagesEndpoint = props.ec2MessagesEndpoint;
-        this.ssmmessagesEndpoint = props.ssmmessagesEndpoint;
-        this.s3Endpoint = props.s3Endpoint;
-        this.cloudHSMEndpoint = props.cloudHSMEndpoint;
+        // this.ssmEndpoint = props.ssmEndpoint;
+        // this.ec2MessagesEndpoint = props.ec2MessagesEndpoint;
+        // this.ssmmessagesEndpoint = props.ssmmessagesEndpoint;
+        // this.s3Endpoint = props.s3Endpoint;
+        // this.cloudHSMEndpoint = props.cloudHSMEndpoint;
 
         const githubUrlRawPath = `https://raw.githubusercontent.com/${props.githubRepositoryUrPath}`;
 
@@ -89,21 +91,21 @@ export class WindowsServerStack extends cdk.Stack {
             });
         }
 
-        // Create a VPC endpoint waiter within this stack to ensure endpoints are fully available before the instance is created
-        // The waiter uses a custom resource that checks if endpoints are in 'available' state
-        // and verifies that DNS resolution and TCP connectivity work for the endpoint services
-        const vpcEndpointWaiter = new VpcEndpointWaiter(this, 'VpcEndpointWaiter', {
-            endpoints: [
-                this.ssmEndpoint,
-                this.ec2MessagesEndpoint,
-                this.ssmmessagesEndpoint,
-                this.s3Endpoint,
-                this.cloudHSMEndpoint,
-            ],
-            vpc: props.vpc,
-            region: this.region || cdk.Stack.of(this).region,
-            timeoutSeconds: 900, // 15 minutes timeout
-        });
+        // // Create a VPC endpoint waiter within this stack to ensure endpoints are fully available before the instance is created
+        // // The waiter uses a custom resource that checks if endpoints are in 'available' state
+        // // and verifies that DNS resolution and TCP connectivity work for the endpoint services
+        // const vpcEndpointWaiter = new VpcEndpointWaiter(this, 'VpcEndpointWaiter', {
+        //     endpoints: [
+        //         this.ssmEndpoint,
+        //         this.ec2MessagesEndpoint,
+        //         this.ssmmessagesEndpoint,
+        //         this.s3Endpoint,
+        //         this.cloudHSMEndpoint,
+        //     ],
+        //     vpc: props.vpc,
+        //     region: this.region || cdk.Stack.of(this).region,
+        //     timeoutSeconds: 900, // 15 minutes timeout
+        // });
 
         // Create the instance role with enhanced permissions for SSM agent registration
         const windowsInstanceRole = new cdk.aws_iam.Role(this, 'WindowsServerInstanceRole', {
@@ -373,24 +375,11 @@ try {
         // The CDK will handle the base64 encoding and CloudFormation formatting
         const userData = UserData.custom(`<powershell>${scriptContent}</powershell>`);
 
-        // TODO: Use VPCe for Linux stack also, move all networking to the networking stack.
-        props.securityGroup.connections.allowTo(
-            props.endpointSecurityGroup,
-            Port.tcp(443),
-            'Allow VPC endpoint access',
-        );
-
         // EC2 Instance
         const instance = new Instance(this, 'WinServer', {
             vpc: props.vpc,
             vpcSubnets: {
-                subnets: [
-                    // Look up the subnet with availability zone
-                    cdk.aws_ec2.Subnet.fromSubnetAttributes(this, 'subnet', {
-                        subnetId: props.subnetId,
-                        availabilityZone: props.vpc.availabilityZones[0],
-                    }),
-                ],
+                subnetType: SubnetType.PRIVATE_WITH_EGRESS,
             },
             instanceType: new InstanceType(props.instanceType),
             machineImage: ami,
@@ -421,14 +410,14 @@ try {
 
         // Add explicit dependencies on the VPC endpoints to ensure they're available before the instance is created
         // VPC endpoints can take several minutes to fully provision
-        instance.node.addDependency(this.ssmEndpoint);
-        instance.node.addDependency(this.ec2MessagesEndpoint);
-        instance.node.addDependency(this.ssmmessagesEndpoint);
-        instance.node.addDependency(this.s3Endpoint);
+        // instance.node.addDependency(this.ssmEndpoint);
+        // instance.node.addDependency(this.ec2MessagesEndpoint);
+        // instance.node.addDependency(this.ssmmessagesEndpoint);
+        // instance.node.addDependency(this.s3Endpoint);
 
         // Add dependency on the VPC endpoint waiter to ensure endpoints are fully ready before the instance starts
         // This is crucial as VPC endpoints can take several minutes to fully provision and be DNS resolvable
-        instance.node.addDependency(vpcEndpointWaiter);
+        //instance.node.addDependency(vpcEndpointWaiter);
 
         // Custom resources have been removed as they're no longer needed
         // SSM QuickSetup handles all the necessary SSM Agent configuration and management
@@ -445,29 +434,29 @@ try {
         });
 
         // Add outputs for VPC endpoints
-        new cdk.CfnOutput(this, 'SSMEndpointId', {
-            value: this.ssmEndpoint.vpcEndpointId,
-            description: 'SSM VPC Endpoint ID',
-            exportName: 'WindowsSSMEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'SSMEndpointId', {
+        //     value: this.ssmEndpoint.vpcEndpointId,
+        //     description: 'SSM VPC Endpoint ID',
+        //     exportName: 'WindowsSSMEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'EC2MessagesEndpointId', {
-            value: this.ec2MessagesEndpoint.vpcEndpointId,
-            description: 'EC2 Messages VPC Endpoint ID',
-            exportName: 'WindowsEC2MessagesEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'EC2MessagesEndpointId', {
+        //     value: this.ec2MessagesEndpoint.vpcEndpointId,
+        //     description: 'EC2 Messages VPC Endpoint ID',
+        //     exportName: 'WindowsEC2MessagesEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'SSMMessagesEndpointId', {
-            value: this.ssmmessagesEndpoint.vpcEndpointId,
-            description: 'SSM Messages VPC Endpoint ID',
-            exportName: 'WindowsSSMMessagesEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'SSMMessagesEndpointId', {
+        //     value: this.ssmmessagesEndpoint.vpcEndpointId,
+        //     description: 'SSM Messages VPC Endpoint ID',
+        //     exportName: 'WindowsSSMMessagesEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'S3EndpointId', {
-            value: this.s3Endpoint.vpcEndpointId,
-            description: 'S3 Gateway VPC Endpoint ID',
-            exportName: 'WindowsS3EndpointId',
-        });
+        // new cdk.CfnOutput(this, 'S3EndpointId', {
+        //     value: this.s3Endpoint.vpcEndpointId,
+        //     description: 'S3 Gateway VPC Endpoint ID',
+        //     exportName: 'WindowsS3EndpointId',
+        // });
         // Output removed as SSM Default Management Role is now managed by QuickSetup
     }
 }

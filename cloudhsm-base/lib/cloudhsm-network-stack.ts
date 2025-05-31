@@ -23,12 +23,12 @@ export class CloudHsmNetworkStack extends cdk.Stack {
     public availabilityZonesOutput: cdk.CfnOutput;
     private _availabilityZones: string[];
     // VPC Endpoints
-    public readonly ssmEndpoint: ec2.InterfaceVpcEndpoint;
-    public readonly ec2MessagesEndpoint: ec2.InterfaceVpcEndpoint;
-    public readonly ssmmessagesEndpoint: ec2.InterfaceVpcEndpoint;
-    public readonly s3Endpoint: ec2.GatewayVpcEndpoint;
-    public readonly cloudHSMEndpoint: ec2.InterfaceVpcEndpoint;
-    public readonly endpointSecurityGroup: ec2.SecurityGroup;
+    // public readonly ssmEndpoint: ec2.InterfaceVpcEndpoint;
+    // public readonly ec2MessagesEndpoint: ec2.InterfaceVpcEndpoint;
+    // public readonly ssmmessagesEndpoint: ec2.InterfaceVpcEndpoint;
+    // public readonly s3Endpoint: ec2.GatewayVpcEndpoint;
+    // public readonly cloudHSMEndpoint: ec2.InterfaceVpcEndpoint;
+    // public readonly endpointSecurityGroup: ec2.SecurityGroup;
 
     constructor(scope: Construct, id: string, props: CloudHsmNetworkStackProps) {
         super(scope, id, props);
@@ -43,13 +43,13 @@ export class CloudHsmNetworkStack extends cdk.Stack {
         this.publicSubnets = this.getSubnets(ec2.SubnetType.PUBLIC);
 
         // Create VPC endpoints for SSM connectivity
-        const endpoints = this.createVpcEndpoints();
-        this.ssmEndpoint = endpoints.ssmEndpoint;
-        this.ec2MessagesEndpoint = endpoints.ec2MessagesEndpoint;
-        this.ssmmessagesEndpoint = endpoints.ssmmessagesEndpoint;
-        this.s3Endpoint = endpoints.s3Endpoint;
-        this.cloudHSMEndpoint = endpoints.cloudHSMEndpoint;
-        this.endpointSecurityGroup = endpoints.endpointSecurityGroup;
+        // const endpoints = this.createVpcEndpoints();
+        // this.ssmEndpoint = endpoints.ssmEndpoint;
+        // this.ec2MessagesEndpoint = endpoints.ec2MessagesEndpoint;
+        // this.ssmmessagesEndpoint = endpoints.ssmmessagesEndpoint;
+        // this.s3Endpoint = endpoints.s3Endpoint;
+        // this.cloudHSMEndpoint = endpoints.cloudHSMEndpoint;
+        // this.endpointSecurityGroup = endpoints.endpointSecurityGroup;
 
         this.createOutputs();
     }
@@ -189,28 +189,28 @@ export class CloudHsmNetworkStack extends cdk.Stack {
         });
 
         // Add outputs for VPC endpoints
-        new cdk.CfnOutput(this, 'SSMEndpointId', {
-            value: this.ssmEndpoint.vpcEndpointId,
-            description: 'SSM VPC Endpoint ID',
-            exportName: 'CloudHsmSSMEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'SSMEndpointId', {
+        //     value: this.ssmEndpoint.vpcEndpointId,
+        //     description: 'SSM VPC Endpoint ID',
+        //     exportName: 'CloudHsmSSMEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'EC2MessagesEndpointId', {
-            value: this.ec2MessagesEndpoint.vpcEndpointId,
-            description: 'EC2 Messages VPC Endpoint ID',
-            exportName: 'CloudHsmEC2MessagesEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'EC2MessagesEndpointId', {
+        //     value: this.ec2MessagesEndpoint.vpcEndpointId,
+        //     description: 'EC2 Messages VPC Endpoint ID',
+        //     exportName: 'CloudHsmEC2MessagesEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'SSMMessagesEndpointId', {
-            value: this.ssmmessagesEndpoint.vpcEndpointId,
-            description: 'SSM Messages VPC Endpoint ID',
-            exportName: 'CloudHsmSSMMessagesEndpointId',
-        });
+        // new cdk.CfnOutput(this, 'SSMMessagesEndpointId', {
+        //     value: this.ssmmessagesEndpoint.vpcEndpointId,
+        //     description: 'SSM Messages VPC Endpoint ID',
+        //     exportName: 'CloudHsmSSMMessagesEndpointId',
+        // });
 
-        new cdk.CfnOutput(this, 'S3EndpointId', {
-            value: this.s3Endpoint.vpcEndpointId,
-            description: 'S3 Gateway VPC Endpoint ID',
-            exportName: 'CloudHsmS3EndpointId',
-        });
+        // new cdk.CfnOutput(this, 'S3EndpointId', {
+        //     value: this.s3Endpoint.vpcEndpointId,
+        //     description: 'S3 Gateway VPC Endpoint ID',
+        //     exportName: 'CloudHsmS3EndpointId',
+        // });
     }
 }
