@@ -21,6 +21,17 @@ Parameters:
     Type: String
     Default: 10.192.20.0/24
 
+  # Asset bucket parameters
+  AssetsBucketName:
+    Description: "Optional - Name of the S3 bucket where CDK assets will be stored"
+    Type: String
+    Default: ""
+
+  AssetsBucketPrefix:
+    Description: "Optional - Prefix within the bucket for organizing assets"
+    Type: String
+    Default: "cloudhsm-workshop/assets/"
+
  # Optional parameters passed by the Event Engine to the stack.
 Resources:
 
@@ -280,6 +291,13 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: true
         Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: ASSETS_BUCKET_NAME
+            Type: PLAINTEXT
+            Value: !Ref AssetsBucketName
+          - Name: ASSETS_BUCKET_PREFIX
+            Type: PLAINTEXT
+            Value: !Ref AssetsBucketPrefix
       ServiceRole:
         Fn::GetAtt:
           - PipelineDeployActionRole
@@ -553,6 +571,9 @@ Resources:
               print('## EVENT')
               print(event)
               destinationBucket = os.environ['DESTINATION_BUCKET']
+              assetsBucketName = os.environ.get('ASSETS_BUCKET_NAME', '')
+              assetsBucketPrefix = os.environ.get('ASSETS_BUCKET_PREFIX', '')
+
               zip_buffer = io.BytesIO()
               build_spec='''
 version: 0.2
@@ -576,7 +597,20 @@ phases:
       - export CLOUDHSM_EXPRESS=false
       - chmod +x ./scripts/deploy.sh
       - chmod +x ./scripts/get_azs.sh
-      - ./scripts/deploy.sh
+      # Set asset bucket parameters if provided
+      - |
+        if [ -n "$ASSETS_BUCKET_NAME" ]; then
+          echo "Using custom asset bucket: $ASSETS_BUCKET_NAME"
+          export ASSETS_BUCKET_NAME
+        fi
+
+        if [ -n "$ASSETS_BUCKET_PREFIX" ]; then
+          echo "Using custom asset prefix: $ASSETS_BUCKET_PREFIX"
+          export ASSETS_BUCKET_PREFIX
+        fi
+
+        # Run deployment with environment variables
+        ./scripts/deploy.sh
 artifacts:
   files: 'cloudhsm-workshop/cloudhsm-base/out.json'
 '''
@@ -597,6 +631,8 @@ artifacts:
       Environment:
         Variables:
           DESTINATION_BUCKET: !Ref PipelineSourceBucket
+          ASSETS_BUCKET_NAME: !Ref AssetsBucketName
+          ASSETS_BUCKET_PREFIX: !Ref AssetsBucketPrefix
 
   PushCodeCustom:
     Type: Custom::Buildspec

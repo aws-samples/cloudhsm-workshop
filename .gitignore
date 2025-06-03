@@ -332,3 +332,8 @@ artifacts/
 **/ash_output/
 **/cdk.out/
 **/node_modules/
+cloudhsm-base/bin/cloudhsm-base.js
+cloudhsm-base/bin/cloudhsm-base.d.ts
+cloudhsm-base/lib/cloudhsm-base-stack.js
+cloudhsm-base/lib/cloudhsm-base-stack.d.ts
+cloudhsm-base/out.json
