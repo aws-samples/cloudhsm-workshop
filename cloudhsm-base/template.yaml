@@ -1,0 +1,937 @@
+Using external assets bucket: cloudhsm-workshop-assets-127218179144
+With assets prefix: cloudhsm-workshop/assets
+Using availability zones: us-east-1a, us-east-1b
+Windows Server deployment enabled
+Using workshop assets for bootstrap script: s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/bootstrap.ps1
+Resources:
+  SsmDefaultManagementDefaultHostManagementRole66BE0FED:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Systems Manager Default Host Management
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedEC2InstanceDefaultPolicy
+      Path: /service-role/
+      RoleName: AWSSystemsManagerDefaultEC2InstanceManagementRole
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/DefaultHostManagementRole/Resource
+  SsmDefaultManagementSsmServiceSettingHandlerServiceRoleC4E65C5F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingHandler/ServiceRole/Resource
+  SsmDefaultManagementSsmServiceSettingHandlerServiceRoleDefaultPolicy98080182:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ssm:UpdateServiceSetting
+              - ssm:ResetServiceSetting
+              - ssm:GetServiceSetting
+              - iam:PassRole
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: SsmDefaultManagementSsmServiceSettingHandlerServiceRoleDefaultPolicy98080182
+      Roles:
+        - Ref: SsmDefaultManagementSsmServiceSettingHandlerServiceRoleC4E65C5F
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingHandler/ServiceRole/DefaultPolicy/Resource
+  SsmDefaultManagementSsmServiceSettingHandler6424D0E6:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: "
+
+          \    const { SSMClient, UpdateServiceSettingCommand, ResetServiceSettingCommand } = require('@aws-sdk/client-ssm');
+
+
+          \    exports.handler = async (event) => {
+
+          \      console.log('Event:', JSON.stringify(event, null, 2));
+
+
+          \      const ssmClient = new SSMClient();
+
+          \      const { RequestType, ResourceProperties } = event;
+
+          \      const { SettingId, SettingValue, Type } = ResourceProperties;
+
+
+          \      try {
+
+          \        // Handle SSM Service Setting
+
+          \        if (!Type || Type === 'ServiceSetting') {
+
+          \          if (RequestType === 'Create' || RequestType === 'Update') {
+
+          \            console.log(`Setting SSM service setting ${SettingId} to ${SettingValue}`);
+
+          \            const updateCommand = new UpdateServiceSettingCommand({
+
+          \              SettingId: SettingId,
+
+          \              SettingValue: SettingValue
+
+          \            });
+
+          \            await ssmClient.send(updateCommand);
+
+          \          } else if (RequestType === 'Delete') {
+
+          \            console.log(`Resetting SSM service setting ${SettingId}`);
+
+          \            const resetCommand = new ResetServiceSettingCommand({
+
+          \              SettingId: SettingId
+
+          \            });
+
+          \            await ssmClient.send(resetCommand);
+
+          \          }
+
+
+          \          return {
+
+          \            PhysicalResourceId: SettingId,
+
+          \            Data: {
+
+          \              SettingId,
+
+          \              SettingValue
+
+          \            }
+
+          \          };
+
+          \        }
+
+
+          \        return {
+
+          \          PhysicalResourceId: 'NONE'
+
+          \        };
+
+          \      } catch (error) {
+
+          \        console.error('Error:', error);
+
+          \        throw error;
+
+          \      }
+
+          \    };
+
+          \  "
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - SsmDefaultManagementSsmServiceSettingHandlerServiceRoleC4E65C5F
+          - Arn
+      Runtime: nodejs18.x
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+      Timeout: 30
+    DependsOn:
+      - SsmDefaultManagementSsmServiceSettingHandlerServiceRoleDefaultPolicy98080182
+      - SsmDefaultManagementSsmServiceSettingHandlerServiceRoleC4E65C5F
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingHandler/Resource
+  SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleC052C69C:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingProvider/framework-onEvent/ServiceRole/Resource
+  SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleDefaultPolicy2B7F9FA8:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - SsmDefaultManagementSsmServiceSettingHandler6424D0E6
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - SsmDefaultManagementSsmServiceSettingHandler6424D0E6
+                        - Arn
+                    - :*
+        Version: "2012-10-17"
+      PolicyName: SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleDefaultPolicy2B7F9FA8
+      Roles:
+        - Ref: SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleC052C69C
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource
+  SsmDefaultManagementSsmServiceSettingProviderframeworkonEvent7E3C31B4:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-127218179144-us-east-1
+        S3Key: 8ba5ee0003de28bf8e4a4fc7e1821c881abd3a80657825533ed1c301bec7e74a.zip
+      Description: AWS CDK resource provider framework - onEvent (WindowsServerStack/SsmDefaultManagement/SsmServiceSettingProvider)
+      Environment:
+        Variables:
+          USER_ON_EVENT_FUNCTION_ARN:
+            Fn::GetAtt:
+              - SsmDefaultManagementSsmServiceSettingHandler6424D0E6
+              - Arn
+      Handler: framework.onEvent
+      Role:
+        Fn::GetAtt:
+          - SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleC052C69C
+          - Arn
+      Runtime: nodejs20.x
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+      Timeout: 900
+    DependsOn:
+      - SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleDefaultPolicy2B7F9FA8
+      - SsmDefaultManagementSsmServiceSettingProviderframeworkonEventServiceRoleC052C69C
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSettingProvider/framework-onEvent/Resource
+      aws:asset:path: asset.8ba5ee0003de28bf8e4a4fc7e1821c881abd3a80657825533ed1c301bec7e74a
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  SsmDefaultManagementSsmServiceSetting1B9BB4DA:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - SsmDefaultManagementSsmServiceSettingProviderframeworkonEvent7E3C31B4
+          - Arn
+      Type: ServiceSetting
+      SettingId: /ssm/managed-instance/default-ec2-instance-management-role
+      SettingValue:
+        Ref: SsmDefaultManagementDefaultHostManagementRole66BE0FED
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: WindowsServerStack/SsmDefaultManagement/SsmServiceSetting/Default
+  CloudHsmWorkshopLogGroupF70A654C:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ec2/windows/cloudhsm-workshop
+      RetentionInDays: 7
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: WindowsServerStack/CloudHsmWorkshopLogGroup/Resource
+  WinServerInstanceProfile146E7398:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Fn::ImportValue: CloudhsmBaseStack:ExportsOutputRefWindowsServerInstanceRoleBB47BD2B1325EAF1
+    DependsOn:
+      - CloudHsmWorkshopLogGroupF70A654C
+      - SsmDefaultManagementSsmServiceSetting1B9BB4DA
+    Metadata:
+      aws:cdk:path: WindowsServerStack/WinServer/InstanceProfile
+  WinServer1D370296:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-east-1a
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            Encrypted: true
+            VolumeSize: 100
+            VolumeType: gp3
+      IamInstanceProfile:
+        Ref: WinServerInstanceProfile146E7398
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiwindowslatestWindowsServer2022EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceType: c5a.xlarge
+      KeyName: cloudhsm-workshop-keypair
+      LaunchTemplate:
+        LaunchTemplateName: WindowsServerStackWinServerLaunchTemplateC6CEA22A
+        Version:
+          Fn::GetAtt:
+            - WinServerLaunchTemplate5645199D
+            - LatestVersionNumber
+      Monitoring: true
+      SecurityGroupIds:
+        - Fn::ImportValue: CloudhsmBaseStack:ExportsOutputFnGetAttec2InstanceSG195E6959GroupIdF0DC5028
+      SubnetId:
+        Fn::ImportValue: CloudhsmNetworkStack:ExportsOutputRefClusterVPCPrivateWithEgress1Subnet1SubnetAFDDEF0FBE58F3C6
+      Tags:
+        - Key: Description
+          Value: CloudHSM-Demo-Stack-Standard-Mode
+        - Key: Environment
+          Value: Development
+        - Key: Name
+          Value: WindowsServerStack/WinServer
+        - Key: Project
+          Value: CloudHSM-Demo
+        - Key: WindowsEnabled
+          Value: "true"
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ""
+            - - "<powershell>\r
+
+                # Deployment version: 2025-05-16T18:13:51.988Z\r
+
+                Set-StrictMode -Version Latest\r
+
+                $ErrorActionPreference = \"Stop\"\r
+
+                $ProgressPreference = \"SilentlyContinue\"\r
+
+                $VerbosePreference = \"Continue\"\r
+
+                \r
+
+                Start-Transcript -Path \"C:\\CloudHSM\\userdata-transcript.log\" -Append\r
+
+                New-Item -Path \"C:\\CloudHSM\" -ItemType Directory -Force -ErrorAction SilentlyContinue\r
+
+                \r
+
+                function Get-MetadataToken {\r
+
+                \    try {\r
+
+                \        $tokenHeaders = @{\"X-aws-ec2-metadata-token-ttl-seconds\" = \"300\"}\r
+
+                \        $token = Invoke-RestMethod -Headers $tokenHeaders -Method PUT -Uri \"http://169.254.169.254/latest/api/token\"\r
+
+                \        return $token\r
+
+                \    } catch {\r
+
+                \        Write-Host \"Error obtaining IMDSv2 token\"\r
+
+                \        return $null\r
+
+                \    }\r
+
+                }\r
+
+                \r
+
+                function Get-Metadata {\r
+
+                \    param($Path, $Token)\r
+
+                \    try {\r
+
+                \        if (-not $Token) {\r
+
+                \            $Token = Get-MetadataToken\r
+
+                \        }\r
+
+                \        $metadataHeaders = @{\"X-aws-ec2-metadata-token\" = $Token}\r
+
+                \        $result = Invoke-RestMethod -Headers $metadataHeaders -Method GET -Uri \"http://169.254.169.254/latest/meta-data/$Path\"\r
+
+                \        return $result\r
+
+                \    } catch {\r
+
+                \        Write-Host \"Error accessing metadata: $Path\"\r
+
+                \        return $null\r
+
+                \    }\r
+
+                }\r
+
+                \r
+
+                function Initialize-AWS {\r
+
+                \    try {\r
+
+                \        $token = Get-MetadataToken\r
+
+                \        $roleName = Get-Metadata -Path \"iam/security-credentials/\" -Token $token\r
+
+                \        $credentials = Get-Metadata -Path \"iam/security-credentials/$roleName\" -Token $token\r
+
+                \        $region = Get-Metadata -Path \"placement/region\" -Token $token\r
+
+                \        $instanceId = Get-Metadata -Path \"instance-id\" -Token $token\r
+
+                \r
+
+                \        # Import AWS PowerShell modules - try both module names as they vary by installation\r
+
+                \        try {\r
+
+                \            if (Get-Module -ListAvailable -Name AWSPowerShell) {\r
+
+                \                Import-Module AWSPowerShell -ErrorAction Stop\r
+
+                \                Write-Host \"Imported AWSPowerShell module\"\r
+
+                \            }\r
+
+                \            elseif (Get-Module -ListAvailable -Name AWSPowerShell.NetCore) {\r
+
+                \                Import-Module AWSPowerShell.NetCore -ErrorAction Stop\r
+
+                \                Write-Host \"Imported AWSPowerShell.NetCore module\"\r
+
+                \            }\r
+
+                \            else {\r
+
+                \                Write-Host \"No AWS PowerShell module found - AWS cmdlets may not be available\"\r
+
+                \            }\r
+
+                \r
+
+                \            # Set credentials in PowerShell session\r
+
+                \            Set-AWSCredential -AccessKey $credentials.AccessKeyId -SecretKey $credentials.SecretAccessKey -SessionToken $credentials.Token -ErrorAction SilentlyContinue\r
+
+                \        }\r
+
+                \        catch {\r
+
+                \            Write-Host \"Error importing AWS PowerShell module: $_\"\r
+
+                \        }\r
+
+                \r
+
+                \        # Always set environment variables as fallback\r
+
+                \        $env:AWS_ACCESS_KEY_ID = $credentials.AccessKeyId\r
+
+                \        $env:AWS_SECRET_ACCESS_KEY = $credentials.SecretAccessKey\r
+
+                \        $env:AWS_SESSION_TOKEN = $credentials.Token\r
+
+                \        $env:AWS_DEFAULT_REGION = $region\r
+
+                \        $env:AWS_REGION = $region\r
+
+                \r
+
+                \        return @{\r
+
+                \            Success = $true\r
+
+                \            Region = $region\r
+
+                \            InstanceId = $instanceId\r
+
+                \            Role = $roleName\r
+
+                \        }\r
+
+                \    } catch {\r
+
+                \        return @{\r
+
+                \            Success = $false\r
+
+                \            Region = \"us-east-1\"\r
+
+                \            Error = $_.Exception.Message\r
+
+                \        }\r
+
+                \    }\r
+
+                }\r
+
+                \r
+
+                function Download-S3File {\r
+
+                \    param(\r
+
+                \        [Parameter(Mandatory=$true)][string]$Url,\r
+
+                \        [Parameter(Mandatory=$true)][string]$OutputPath,\r
+
+                \        [Parameter(Mandatory=$false)][string]$Region,\r
+
+                \        [Parameter(Mandatory=$false)][int]$MaxRetries = 3\r
+
+                \    )\r
+
+                \r
+
+                \    # Parse the URL to get bucket and key\r
+
+                \    try {\r
+
+                \        if ($Url -like \"s3://*\") {\r
+
+                \            # Parse s3:// URL format\r
+
+                \            $uri = [System.Uri]$Url\r
+
+                \            $bucketName = $uri.Host\r
+
+                \            $key = $uri.AbsolutePath.TrimStart('/')\r
+
+                \            Write-Host \"Parsed S3 URL - Bucket: $bucketName, Key: $key\"\r
+
+                \        }\r
+
+                \        else {\r
+
+                \            throw \"URL is not in s3:// format: $Url\"\r
+
+                \        }\r
+
+                \    }\r
+
+                \    catch {\r
+
+                \        Write-Host \"Error parsing S3 URL: $_\"\r
+
+                \        return $false\r
+
+                \    }\r
+
+                \r
+
+                \    # Try to download using AWS PowerShell cmdlets\r
+
+                \    $retryCount = 0\r
+
+                \    $success = $false\r
+
+                \r
+
+                \    while (-not $success -and $retryCount -lt $MaxRetries) {\r
+
+                \        $retryCount++\r
+
+                \r
+
+                \        try {\r
+
+                \            Write-Host \"Downloading S3 object (attempt $retryCount)...\"\r
+
+                \            Read-S3Object -BucketName $bucketName -Key $key -File $OutputPath -Region $Region\r
+
+                \r
+
+                \            # Fix the Test-Path syntax - separate into two conditions\r
+
+                \            if (Test-Path $OutputPath) {\r
+
+                \                $fileInfo = Get-Item $OutputPath\r
+
+                \                if ($fileInfo.Length -gt 0) {\r
+
+                \                    $success = $true\r
+
+                \                    Write-Host \"Successfully downloaded S3 object\"\r
+
+                \                    return $true\r
+
+                \                }\r
+
+                \                else {\r
+
+                \                    Write-Host \"Downloaded file exists but is empty\"\r
+
+                \                }\r
+
+                \            }\r
+
+                \            else {\r
+
+                \                Write-Host \"Downloaded file is missing\"\r
+
+                \            }\r
+
+                \        }\r
+
+                \        catch {\r
+
+                \            Write-Host \"Download attempt $retryCount failed: $_\"\r
+
+                \r
+
+                \            if ($retryCount -lt $MaxRetries) {\r
+
+                \                $sleepTime = 2 * $retryCount\r
+
+                \                Write-Host \"Retrying in $sleepTime seconds...\"\r
+
+                \                Start-Sleep -Seconds $sleepTime\r
+
+                \            }\r
+
+                \        }\r
+
+                \    }\r
+
+                \r
+
+                \    Write-Host \"Failed to download S3 object after $MaxRetries attempts\"\r
+
+                \    return $false\r
+
+                }\r
+
+                \r
+
+                Write-Host \"Initializing AWS credentials using IMDSv2\"\r
+
+                $awsInfo = Initialize-AWS\r
+
+                $region = $awsInfo.Region\r
+
+                Write-Host \"AWS initialization complete. Region: $region\"\r
+
+                \r
+
+                $bootstrapLocalPath = \"C:\\CloudHSM\\bootstrap.ps1\"\r
+
+                $bootstrapS3Url = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/bootstrap.ps1\"\r
+
+                Write-Host \"Downloading bootstrap script from $bootstrapS3Url\"\r
+
+                \r
+
+                $downloadOk = Download-S3File -Url $bootstrapS3Url -OutputPath $bootstrapLocalPath -Region $region\r
+
+                if (-not $downloadOk) {\r
+
+                \    throw \"Failed to download bootstrap script after multiple attempts\"\r
+
+                }\r
+
+                \r
+
+                # Download all additional scripts to a common location\r
+
+                Write-Host \"Pre-downloading additional scripts...\"\r
+
+                $scriptsDir = \"C:\\CloudHSM\\scripts\"\r
+
+                New-Item -Path $scriptsDir -ItemType Directory -Force | Out-Null\r
+
+                \r
+
+                # Clone the scriptUrls hashtable to avoid modifying the original\r
+
+                $scriptsToDownload = @{\r
+
+                \    \"CloudHSM-Utils.psm1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/CloudHSM-Utils.psm1\"\r
+
+                \    \"check-status.ps1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/check-status.ps1\"\r
+
+                \    \"install-dependencies.ps1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/install-dependencies.ps1\"\r
+
+                \    \"install-prerequisites.ps1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/install-prerequisites.ps1\"\r
+
+                \    \"install-signtool.ps1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/install-signtool.ps1\"\r
+
+                \    \"setup-cloudhsm.ps1\" = \"s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/setup-cloudhsm.ps1\"\r
+
+                }\r
+
+                \r
+
+                # Download each script\r
+
+                foreach ($scriptName in $scriptsToDownload.Keys) {\r
+
+                \    $scriptUrl = $scriptsToDownload[$scriptName]\r
+
+                \    $scriptPath = Join-Path $scriptsDir $scriptName\r
+
+                \r
+
+                \    Write-Host \"Downloading $scriptName from $scriptUrl\"\r
+
+                \    $scriptOk = Download-S3File -Url $scriptUrl -OutputPath $scriptPath -Region $region\r
+
+                \r
+
+                \    if (-not $scriptOk) {\r
+
+                \        Write-Host \"Warning: Failed to pre-download $scriptName\" -ForegroundColor Yellow\r
+
+                \    } else {\r
+
+                \        Write-Host \"Successfully downloaded $scriptName\" -ForegroundColor Green\r
+
+                \r
+
+                \        # Also copy to base directory where bootstrap.ps1 might look for it\r
+
+                \        Copy-Item -Path $scriptPath -Destination \"C:\\CloudHSM\\$scriptName\" -Force\r
+
+                \    }\r
+
+                }\r
+
+                \r
+
+                Write-Host \"Executing bootstrap script\"\r
+
+                $bootstrapParams = @{\r
+
+                \    # Required parameters\r
+
+                \    \"ClusterId\" = \""
+              - Fn::ImportValue: CloudhsmBaseStack:ExportsOutputFnGetAttcloudHSMClusterClusterIdE50079C6
+              - "\"\r
+
+                \r
+
+                \    # This parameter name is misleading but required by bootstrap.ps1\r
+
+                \    # It expects a directory or URL prefix where scripts can be found\r
+
+                \    \"BootstrapScriptUrl\" = \"C:\\CloudHSM\\scripts\"\r
+
+                \r
+
+                \    # Region for AWS operations\r
+
+                \    \"Region\" = \"us-east-1\"\r
+
+                \r
+
+                \    # SSM parameter paths for certificates\r
+
+                \    \"CustomerCaCertPath\" = \"/cloudhsm/"
+              - Fn::ImportValue: CloudhsmBaseStack:ExportsOutputFnGetAttcloudHSMClusterClusterIdE50079C6
+              - "/customer-ca-cert\"\r
+
+                \    \"ClusterCertPath\" = \"/cloudhsm/"
+              - Fn::ImportValue: CloudhsmBaseStack:ExportsOutputFnGetAttcloudHSMClusterClusterIdE50079C6
+              - "/cluster-cert\"\r
+
+                \r
+
+                \    # Pass dictionary of script URLs as fallback\r
+
+                \    \"ScriptsUrls\" = $scriptsToDownload\r
+
+                \r
+
+                \    # Control settings\r
+
+                \    \"MaxRetries\" = 5\r
+
+                \    \"Force\" = $true\r
+
+                }\r
+
+                \r
+
+                Write-Host \"Running bootstrap script...\"\r
+
+                $startTime = Get-Date\r
+
+                \r
+
+                try {\r
+
+                \    & $bootstrapLocalPath @bootstrapParams *> \"C:\\CloudHSM\\bootstrap-execution.log\"\r
+
+                \    $exitCode = $LASTEXITCODE\r
+
+                \r
+
+                \    if ($exitCode -ne 0) {\r
+
+                \        Write-Host \"Bootstrap failed with exit code $exitCode\"\r
+
+                \        @{ \"status\" = \"ERROR\"; \"timestamp\" = (Get-Date -Format \"yyyy-MM-dd HH:mm:ss\"); \"message\" = \"Bootstrap failed with exit code: $exitCode\" } |\r
+
+                \            ConvertTo-Json | Out-File \"C:\\CloudHSM\\status.json\" -Encoding utf8\r
+
+                \        throw \"Bootstrap script execution failed with exit code $exitCode\"\r
+
+                \    } else {\r
+
+                \        Write-Host \"Bootstrap completed successfully\"\r
+
+                \        @{ \"status\" = \"SUCCESS\"; \"timestamp\" = (Get-Date -Format \"yyyy-MM-dd HH:mm:ss\"); \"message\" = \"Bootstrap completed successfully\" } |\r
+
+                \            ConvertTo-Json | Out-File \"C:\\CloudHSM\\status.json\" -Encoding utf8\r
+
+                \    }\r
+
+                } catch {\r
+
+                \    Write-Error \"Error executing bootstrap script: $_\"\r
+
+                \    @{ \"status\" = \"ERROR\"; \"timestamp\" = (Get-Date -Format \"yyyy-MM-dd HH:mm:ss\"); \"message\" = \"Bootstrap failed with error: $_\" } |\r
+
+                \        ConvertTo-Json | Out-File \"C:\\CloudHSM\\status.json\" -Encoding utf8\r
+
+                \    throw\r
+
+                } finally {\r
+
+                \    Stop-Transcript\r
+
+                }\r
+
+                </powershell>"
+    DependsOn:
+      - CloudHsmWorkshopLogGroupF70A654C
+      - SsmDefaultManagementSsmServiceSetting1B9BB4DA
+    Metadata:
+      aws:cdk:path: WindowsServerStack/WinServer/Resource
+  WinServerLaunchTemplate5645199D:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
+      LaunchTemplateName: WindowsServerStackWinServerLaunchTemplateC6CEA22A
+    DependsOn:
+      - CloudHsmWorkshopLogGroupF70A654C
+      - SsmDefaultManagementSsmServiceSetting1B9BB4DA
+    Metadata:
+      aws:cdk:path: WindowsServerStack/WinServer/LaunchTemplate
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/01PXU/DMAz8LXtPDW2ReGaTQEhITIX3yku9kjUfVZwMoSj/nbQw2NPd2Wedr4H6voW7DX5yJYep0uoA6S2gnEQZ9UmhgdQ5TWJ3tCvunVbya5H/7NlyQCtp791RacpCozkMCOkxWhmUs4vpwrPgtkdmCgwPCxQN2ygnCltkEtqNDOnFjU/exXm5vPAsSDaQLmnXyasNS8LHO5lZY6CcRUfsoi9LGTk40/tfzVAePauBvFgfKH1HZUexW21/V0vjK/4awxzDWhw9Ggrks7BuIDjxzblpoa7hdnNipSofbVCGoPvBb7I7Hl5lAQAA
+    Metadata:
+      aws:cdk:path: WindowsServerStack/CDKMetadata/Default
+Outputs:
+  SsmDefaultManagementDefaultHostManagementRoleNameF02246A2:
+    Description: SSM Default Host Management Role Name
+    Value:
+      Ref: SsmDefaultManagementDefaultHostManagementRole66BE0FED
+    Export:
+      Name: SsmDefaultHostManagementRoleName
+  AssetsBucketName:
+    Description: External Workshop Assets S3 bucket
+    Value: cloudhsm-workshop-assets-127218179144
+  AssetsBucketPrefix:
+    Description: External Workshop Assets prefix
+    Value: cloudhsm-workshop/assets/
+  BootstrapScriptUrl:
+    Description: S3 URL for bootstrap script (using external workshop assets bucket)
+    Value: s3://cloudhsm-workshop-assets-127218179144/cloudhsm-workshop/assets/scripts/windows/bootstrap.ps1
+  InstanceId:
+    Value:
+      Ref: WinServer1D370296
+  PublicDns:
+    Value:
+      Fn::GetAtt:
+        - WinServer1D370296
+        - PublicDnsName
+  CloudWatchLogGroup:
+    Description: CloudWatch Log Group for CloudHSM Workshop
+    Value:
+      Ref: CloudHsmWorkshopLogGroupF70A654C
+  SsmDefaultManagementRole:
+    Description: SSM Default Host Management Role
+    Value:
+      Ref: SsmDefaultManagementDefaultHostManagementRole66BE0FED
+Parameters:
+  SsmParameterValueawsserviceamiwindowslatestWindowsServer2022EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+
