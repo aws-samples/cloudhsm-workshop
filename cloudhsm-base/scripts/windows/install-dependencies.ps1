@@ -40,54 +40,54 @@ Write-Host "Region: $Region"
 # Install Windows SDK components
 try {
     Write-Host "Installing Windows SDK components..."
-    
+
     # Check if Chocolatey is installed
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
         Write-Host "Chocolatey not found. Installing Chocolatey..."
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        
+
         # First, clean up any existing failed/partial installation
         if (Test-Path "C:\ProgramData\chocolatey") {
             Write-Host "Found existing Chocolatey directory. Cleaning up first..."
             Remove-Item -Path "C:\ProgramData\chocolatey" -Recurse -Force -ErrorAction SilentlyContinue
         }
-        
+
         # Install Chocolatey using the official script
         try {
             Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-        } 
+        }
         catch {
             Write-Warning "Error during Chocolatey installation: ${_}"
-            
+
             # Alternative manual Chocolatey installation
             Write-Host "Attempting alternative Chocolatey installation..."
             $env:chocolateyVersion = '1.2.0'
             $tempDir = [System.IO.Path]::GetTempPath()
             $chocoInstallPS1 = Join-Path $tempDir "chocoInstall.ps1"
             $installUrl = 'https://community.chocolatey.org/install.ps1'
-            
+
             # Download the script
             (New-Object System.Net.WebClient).DownloadFile($installUrl, $chocoInstallPS1)
-            
+
             # Execute the script
             & $chocoInstallPS1
-            
+
             # Check if installation was successful
             if (-not (Test-Path "C:\ProgramData\chocolatey\bin\choco.exe")) {
                 throw "Failed to install Chocolatey using alternative method"
             }
         }
-        
+
         # Refresh environment variables to include Chocolatey
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        
+
         # Verify Chocolatey is accessible
         if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
             Write-Host "Adding Chocolatey to PATH manually..."
             $env:Path += ";C:\ProgramData\chocolatey\bin"
         }
-        
+
         if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
             throw "Chocolatey installation appears successful but 'choco' command is not available"
         }
@@ -96,20 +96,24 @@ try {
     # Install AWS CLI
     Write-Host "Installing AWS CLI..."
     & choco install awscli -y --force --ignore-checksums
-    
+
     # Install Windows SDK
     Write-Host "Installing Windows SDK (using windows-sdk-10.1 package)..."
     # Use --force to ensure installation even if there's a problem with previous installation
     # Allow empty checksums as SDK installers sometimes have issues
     & choco install windows-sdk-10.1 -y --force --allow-empty-checksums --ignore-checksums
-    
+
     # Install Visual Studio Build Tools (Using 2022 as per README)
     Write-Host "Installing Visual Studio 2022 Build Tools..."
     & choco install visualstudio2022buildtools -y --force --ignore-checksums
-    
+
     # Install .NET Framework 4.8 Developer Pack
     Write-Host "Installing .NET Framework 4.8 Developer Pack..."
     & choco install netfx-4.8-devpack -y --force --ignore-checksums
+
+     # Install OpenSSL
+    Write-Host "Installing OpenSSL..."
+    & choco install openssl -y --force --ignore-checksums
 }
 catch {
     Write-Error ("Failed to install dependencies: {0}" -f $_.Exception.Message)
