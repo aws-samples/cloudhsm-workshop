@@ -14,6 +14,7 @@ import {
     KeyPair,
     Subnet,
     SubnetType,
+    ISecurityGroup,
 } from 'aws-cdk-lib/aws-ec2';
 import { VpcEndpointWaiter } from './vpc-endpoint-waiter';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -31,6 +32,7 @@ export interface WindowsServerStackProps extends cdk.StackProps {
     keyPairName: string;
     windowsAmiParameter: string;
     securityGroup: SecurityGroup;
+    clusterSecurityGroup: ISecurityGroup;
     cloudHsmClusterId: string;
     assetsBucketName?: string;
     assetsBucketPrefix?: string;
@@ -399,6 +401,8 @@ try {
                 },
             ],
         });
+
+        instance.addSecurityGroup(props.clusterSecurityGroup);
 
         // Add OS tag to properly target instance for SSM QuickSetup configurations
         cdk.Tags.of(instance).add('OS', 'Windows');

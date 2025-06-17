@@ -141,6 +141,7 @@ if (context.deployWindowsServer) {
         instanceType: context.windowsInstanceType,
         windowsAmiParameter: context.windowsAmiParameter,
         securityGroup: cloudHsmStack.ec2InstanceSG,
+        clusterSecurityGroup: cloudHsmStack.clusterSG,
         cloudHsmClusterId: cloudHsmStack.clusterId,
         keyPairName: context.keyPairName,
         assetsBucketName: context.assetsBucketName,
