@@ -576,44 +576,44 @@ Resources:
 
               zip_buffer = io.BytesIO()
               build_spec='''
-version: 0.2
-phases:
-  install:
-    runtime-versions:
-      python: 3.13
-      nodejs: 22
-    commands:
-      - git clone https://github.com/aws-samples/cloudhsm-workshop
-      - cd cloudhsm-workshop/cloudhsm-base
-      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
-      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
-      - npm install aws-cdk-lib aws-cdk -g
-      - npm install
-      - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
-  build:
-    commands:
-      - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
-      - export AWS_REGION=$AWS_REGION
-      - export CLOUDHSM_EXPRESS=false
-      - chmod +x ./scripts/deploy.sh
-      - chmod +x ./scripts/get_azs.sh
-      # Set asset bucket parameters if provided
-      - |
-        if [ -n "$ASSETS_BUCKET_NAME" ]; then
-          echo "Using custom asset bucket: $ASSETS_BUCKET_NAME"
-          export ASSETS_BUCKET_NAME
-        fi
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.13
+                nodejs: 22
+              commands:
+                - git clone https://github.com/aws-samples/cloudhsm-workshop
+                - cd cloudhsm-workshop/cloudhsm-base
+                - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+                - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+                - npm install aws-cdk-lib aws-cdk -g
+                - npm install
+                - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
+            build:
+              commands:
+                - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
+                - export AWS_REGION=$AWS_REGION
+                - export CLOUDHSM_EXPRESS=false
+                - chmod +x ./scripts/deploy.sh
+                - chmod +x ./scripts/get_azs.sh
+                # Set asset bucket parameters if provided
+                - |
+                  if [ -n "$ASSETS_BUCKET_NAME" ]; then
+                    echo "Using custom asset bucket: $ASSETS_BUCKET_NAME"
+                    export ASSETS_BUCKET_NAME
+                  fi
 
-        if [ -n "$ASSETS_BUCKET_PREFIX" ]; then
-          echo "Using custom asset prefix: $ASSETS_BUCKET_PREFIX"
-          export ASSETS_BUCKET_PREFIX
-        fi
+                  if [ -n "$ASSETS_BUCKET_PREFIX" ]; then
+                    echo "Using custom asset prefix: $ASSETS_BUCKET_PREFIX"
+                    export ASSETS_BUCKET_PREFIX
+                  fi
 
-        # Run deployment with environment variables
-        ./scripts/deploy.sh
-artifacts:
-  files: 'cloudhsm-workshop/cloudhsm-base/out.json'
-'''
+                  # Run deployment with environment variables
+                  ./scripts/deploy.sh
+          artifacts:
+            files: 'cloudhsm-workshop/cloudhsm-base/out.json'
+          '''
               with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zipper:
                   file_name = 'buildspec.yaml'
                   zipper.writestr(file_name, build_spec)
