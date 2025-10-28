@@ -40,11 +40,11 @@ const context = {
     requiredAzs: parseInt(app.node.tryGetContext('requiredAzs') || '2'),
     environment: app.node.tryGetContext('environment') || 'Development',
     project: app.node.tryGetContext('project') || 'CloudHSM-Demo',
-    region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'ap-northeast-1', // Default to AP region if nothing is set
+    region: app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'ap-northeast-3', // Default to AP region if nothing is set
     deployWindowsServer: app.node.tryGetContext('windows') === 'true' || false,
     windowsAmiParameter:
         app.node.tryGetContext('windowsAmi') || '/aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base',
-    windowsInstanceType: app.node.tryGetContext('windowsInstanceType') || 'c5a.xlarge',
+    windowsInstanceType: app.node.tryGetContext('windowsInstanceType') || 'c5.xlarge',
     // Asset bucket parameters that can be passed to override the default CDK asset bucket
     assetsBucketName: app.node.tryGetContext('assetsBucketName'),
     assetsBucketPrefix: app.node.tryGetContext('assetsBucketPrefix'),
