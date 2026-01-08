@@ -11,7 +11,7 @@
         "cdk": "cdk"
     },
     "dependencies": {
-        "@aws-sdk/client-ec2": "^3.716.0",
+        "@aws-sdk/client-ec2": "^3.965.0",
         "@types/node": "^22.10.2",
         "aws-cdk-lib": "^2.173.0",
         "constructs": "^10.4.2",
